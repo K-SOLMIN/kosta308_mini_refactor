@@ -1,6 +1,7 @@
 package com.kimdoolim.auth.controller;
 
 import com.kimdoolim.auth.service.LoginService;
+import com.kimdoolim.common.SessionManager;
 import com.kimdoolim.dto.User;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -24,9 +25,9 @@ public class LoginServlet extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         req.setCharacterEncoding("UTF-8");
 
-        String id         = req.getParameter("userId");
-        String password   = req.getParameter("userPw");
-        boolean rememberMe = "on".equals(req.getParameter("rememberMe"));
+        String id        = req.getParameter("userId");
+        String password  = req.getParameter("userPw");
+        boolean remember = "on".equals(req.getParameter("rememberMe"));
 
         User user = loginService.login(id, password);
 
@@ -43,13 +44,23 @@ public class LoginServlet extends HttpServlet {
         }
 
         // 아이디 저장 쿠키 처리
-        Cookie cookie = new Cookie(COOKIE_NAME, rememberMe ? id : "");
-        cookie.setMaxAge(rememberMe ? COOKIE_AGE : 0);
+        Cookie cookie = new Cookie(COOKIE_NAME, remember ? id : "");
+        cookie.setMaxAge(remember ? COOKIE_AGE : 0);
         cookie.setPath("/");
         resp.addCookie(cookie);
 
+        // 중복 로그인 감지
+        if (SessionManager.hasActiveSession(user.getUserId())) {
+            HttpSession session = req.getSession();
+            session.setAttribute("pendingUser", user);
+            req.getRequestDispatcher("/WEB-INF/views/duplicate-confirm.jsp").forward(req, resp);
+            return;
+        }
+
+        // 정상 로그인
         HttpSession session = req.getSession();
         session.setAttribute("loginUser", user);
+        SessionManager.register(user.getUserId(), session);
 
         resp.sendRedirect(req.getContextPath() + "/main.do");
     }
