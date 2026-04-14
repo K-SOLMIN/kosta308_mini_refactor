@@ -1104,3 +1104,114 @@ body {
     color: #1a3a6b;
     margin-bottom: 4px;
 }
+
+/* ══════════════════════════════════════════
+   FullCalendar Custom Styling
+══════════════════════════════════════════ */
+#calendar {
+    font-family: '맑은 고딕', 'Malgun Gothic', sans-serif;
+    --fc-border-color: #eef2f6;
+    --fc-today-bg-color: #f5f8ff;
+    --fc-page-bg-color: #ffffff;
+    --fc-list-event-hover-bg-color: #f8fafd;
+}
+
+/* 헤더 툴바 */
+.fc .fc-toolbar-title {
+    font-size: 16px !important;
+    font-weight: 800;
+    color: #1a3a6b;
+}
+
+.fc .fc-button {
+    background-color: #fff !important;
+    border: 1px solid #dce4ed !important;
+    color: #6a86aa !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    text-transform: capitalize !important;
+    padding: 4px 10px !important;
+    box-shadow: none !important;
+}
+
+.fc .fc-button:hover {
+    background-color: #f8f9fb !important;
+    border-color: #1a3a6b !important;
+    color: #1a3a6b !important;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active, 
+.fc .fc-button-primary:not(:disabled):active {
+    background-color: #1a3a6b !important;
+    border-color: #1a3a6b !important;
+    color: #fff !important;
+}
+
+/* 요일 헤더 */
+.fc .fc-col-header-cell {
+    background-color: #f8f9fb;
+    padding: 8px 0 !important;
+}
+.fc .fc-col-header-cell-cushion {
+    font-size: 12px;
+    font-weight: 700;
+    color: #4a6a8a;
+    text-decoration: none !important;
+}
+
+/* 날짜 숫자 */
+.fc .fc-daygrid-day-number {
+    font-size: 12px;
+    font-weight: 600;
+    color: #8a9bab;
+    padding: 6px 8px !important;
+    text-decoration: none !important;
+}
+
+/* 이벤트 공통 스타일 */
+.fc-event {
+    border: none !important;
+    padding: 2px 4px !important;
+    border-radius: 3px !important;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.fc-event-title {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fc-event-time {
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    margin-right: 3px;
+}
+
+/* 상태별 이벤트 색상 */
+.fc-event-approved {
+    background-color: #e8f5ec !important;
+    color: #1a7a38 !important;
+    border-left: 3px solid #34a853 !important;
+}
+
+.fc-event-waiting {
+    background-color: #fef5e0 !important;
+    color: #b07800 !important;
+    border-left: 3px solid #fbbc05 !important;
+}
+
+/* 배경 이벤트 (제한 기간 - 방학 등) */
+.fc-bg-event {
+    opacity: 0.25 !important;
+}
+.fc-v-event .fc-event-main {
+    color: inherit !important;
+}
+
+/* 모바일/작은 화면 대응 */
+.fc .fc-view-harness {
+    background-color: #fff;
+}

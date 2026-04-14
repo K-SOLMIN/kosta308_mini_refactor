@@ -184,14 +184,15 @@ document.addEventListener('DOMContentLoaded', function () {
         ];
 
         var myReservations = [
-            { target:'대강당',     type:'FACILITY',  date:'2026-04-15', period:'1교시', startTime:'09:00', purpose:'특강',       status:'승인' },
-            { target:'노트북',     type:'EQUIPMENT', date:'2026-04-15', period:'3교시', startTime:'10:40', purpose:'실습 수업',   status:'대기' },
-            { target:'회의실 A',   type:'FACILITY',  date:'2026-04-16', period:'2교시', startTime:'09:50', purpose:'교직원 회의', status:'승인' }
+            { target:'대강당',     type:'FACILITY',  date:'2026-04-14', period:'1교시', startTime:'09:00', purpose:'특강',       status:'승인' },
+            { target:'노트북',     type:'EQUIPMENT', date:'2026-04-14', period:'3교시', startTime:'10:40', purpose:'실습 수업',   status:'대기' },
+            { target:'회의실 A',   type:'FACILITY',  date:'2026-04-15', period:'2교시', startTime:'09:50', purpose:'교직원 회의', status:'승인' },
+            { target:'세미나실 B', type:'FACILITY',  date:'2026-04-16', period:'5교시', startTime:'13:10', purpose:'동아리 발표', status:'승인' }
         ];
 
         var pendingRequests = [
-            { requester:'유공일',   target:'대강당',     type:'FACILITY',  date:'2026-04-15', period:'2교시', startTime:'09:50', requestedAt:'2026-04-14' },
-            { requester:'유공이',   target:'노트북',     type:'EQUIPMENT', date:'2026-04-15', period:'4교시', startTime:'11:30', requestedAt:'2026-04-14' }
+            { requester:'유공일',   target:'대강당',     type:'FACILITY',  date:'2026-04-14', period:'2교시', startTime:'09:50', requestedAt:'2026-04-14' },
+            { requester:'유공이',   target:'노트북',     type:'EQUIPMENT', date:'2026-04-14', period:'4교시', startTime:'11:30', requestedAt:'2026-04-14' }
         ];
 
         function typeBadge(type) { return type === 'FACILITY' ? '<span class="type-badge facility">시설</span>' : '<span class="type-badge equipment">비품</span>'; }
@@ -243,10 +244,66 @@ document.addEventListener('DOMContentLoaded', function () {
             }).join('');
         }
 
+        /* ── FullCalendar 초기화 ── */
+        function initCalendar() {
+            var calendarEl = document.getElementById('calendar');
+            if (!calendarEl) return;
+
+            if (typeof FullCalendar === 'undefined') {
+                console.warn('FullCalendar library not loaded yet. Retrying in 100ms...');
+                setTimeout(initCalendar, 100);
+                return;
+            }
+
+            // 예약 데이터를 달력 이벤트로 변환
+            var events = myReservations.map(function(r) {
+                return {
+                    title: r.target,
+                    start: r.date + 'T' + r.startTime,
+                    className: r.status === '승인' ? 'fc-event-approved' : 'fc-event-waiting',
+                    extendedProps: { purpose: r.purpose, status: r.status }
+                };
+            });
+
+            // 제한 기간 샘플 (현재 달력에 보이도록 4월 중순으로 조정)
+            events.push({
+                title: '임시 점검 기간 (시설 이용 제한)',
+                start: '2026-04-20',
+                end: '2026-04-25',
+                display: 'background',
+                color: '#ff7675'
+            });
+
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                initialDate: '2026-04-14',
+                locale: 'ko',
+                headerToolbar: {
+                    left: 'prev,next',
+                    center: 'title',
+                    right: '' // 뷰 전환 버튼 제거로 공간 확보
+                },
+                height: 380, // 콤팩트한 높이
+                contentHeight: 'auto',
+                fixedWeekCount: false, // 실제 주 수에 맞춰 높이 자동 조절
+                events: events,
+                eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+                eventClick: function(info) {
+                    var p = info.event.extendedProps;
+                    if (p.purpose) {
+                        alert('[' + info.event.title + '] ' + p.purpose + ' (' + p.status + ')');
+                    }
+                }
+            });
+            calendar.render();
+            console.log('FullCalendar rendered with ' + events.length + ' events.');
+        }
+
         renderStats();
         renderTables();
         renderPeriodSchedule();
         renderAlarms();
+        initCalendar();
     };
 
     // 초기 로드 시 실행

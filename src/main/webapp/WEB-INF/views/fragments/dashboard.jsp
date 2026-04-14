@@ -53,8 +53,19 @@
 
         <div class="dash-grid">
 
-            <!-- ── 왼쪽: 테이블 영역 ── -->
+            <!-- ── 왼쪽: 달력 및 테이블 영역 ── -->
             <div class="dash-left">
+
+                <!-- 나의 예약 일정표 (FullCalendar) -->
+                <div class="dash-card">
+                    <div class="dash-card-header">
+                        <span class="dash-card-title">나의 예약 일정표</span>
+                        <span class="dash-card-sub">예약된 시설 및 비품 일정을 확인하세요.</span>
+                    </div>
+                    <div class="dash-card-body" style="padding: 15px;">
+                        <div id="calendar"></div>
+                    </div>
+                </div>
 
                 <!-- 나의 예약 내역 -->
                 <div class="dash-card">
