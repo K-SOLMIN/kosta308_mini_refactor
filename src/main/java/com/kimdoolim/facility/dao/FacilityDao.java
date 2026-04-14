@@ -7,6 +7,10 @@ import java.util.List;
 
 public class FacilityDao {
 
+    private static final FacilityDao instance = new FacilityDao();
+    private FacilityDao() {}
+    public static FacilityDao getInstance() { return instance; }
+
     public List<Facility> findAll(Connection conn) {
         String sql =
             "SELECT f.facility_id, f.manager_id, u.name AS manager_name, " +
@@ -37,7 +41,7 @@ public class FacilityDao {
             }
         } catch (SQLException e) {
             e.printStackTrace();
-            return null; // 에러 발생 시 null 반환
+            return null;
         }
         return list;
     }
@@ -60,7 +64,7 @@ public class FacilityDao {
             return ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
-            return -1; // 에러 발생 시 -1 반환
+            return -1;
         }
     }
 

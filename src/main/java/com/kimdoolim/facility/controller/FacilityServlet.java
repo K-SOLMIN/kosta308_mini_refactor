@@ -17,7 +17,7 @@ import java.util.List;
 @WebServlet("/facility.do")
 public class FacilityServlet extends HttpServlet {
 
-    private final FacilityService facilityService = new FacilityService();
+    private final FacilityService facilityService = FacilityService.getInstance();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)

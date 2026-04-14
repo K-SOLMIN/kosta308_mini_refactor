@@ -9,6 +9,10 @@ import java.util.List;
 
 public class LoginDao {
 
+    private static final LoginDao instance = new LoginDao();
+    private LoginDao() {}
+    public static LoginDao getInstance() { return instance; }
+
     public User findByIdAndPassword(Connection conn, String id, String password) {
         String sql = "SELECT user_id, school_id, id, permission, name, phone, " +
                      "grade_no, class_no, is_active, user_status " +

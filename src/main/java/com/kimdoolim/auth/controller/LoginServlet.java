@@ -20,7 +20,7 @@ public class LoginServlet extends HttpServlet {
     private static final String AUTO_LOGIN_COOKIE = "autoLoginToken";
     private static final int    COOKIE_AGE  = 60 * 60 * 24 * 30; // 30일
 
-    private final LoginService loginService = new LoginService();
+    private final LoginService loginService = LoginService.getInstance();
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
