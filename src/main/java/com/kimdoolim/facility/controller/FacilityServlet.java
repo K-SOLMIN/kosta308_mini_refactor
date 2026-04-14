@@ -54,13 +54,32 @@ public class FacilityServlet extends HttpServlet {
         }
 
         // ── 데이터 조회 ──
-        // 중간 관리자 이상이면 관리 기능을 사용할 수 있도록 함
-        boolean isAdmin = loginUser.getPermission() == Permission.ADMIN 
-                       || loginUser.getPermission() == Permission.MIDDLEADMIN;
         List<Facility> facilities = facilityService.getAllFacilities();
         List<User> managers       = facilityService.getAvailableManagers();
 
-        req.setAttribute("isAdmin", isAdmin);
+        // ── 중간 관리자 필터링 및 접근 제한 ──────────────────────────────
+        Permission perm = loginUser.getPermission();
+        
+        if (perm == Permission.MIDDLEADMIN) {
+            // 본인이 담당자인 시설만 필터링 (is_delete=0은 이미 DAO에서 걸러짐)
+            List<Facility> myFacilities = facilities.stream()
+                .filter(f -> f.getManagerId() != null && f.getManagerId().equals(loginUser.getUserId()))
+                .toList();
+
+            if (myFacilities.isEmpty()) {
+                if (isFetch) {
+                    sendJson(resp, HttpServletResponse.SC_FORBIDDEN, "{\"error\":\"no_managed_facility\"}");
+                } else {
+                    resp.sendRedirect(req.getContextPath() + "/main.do");
+                }
+                return;
+            }
+            // 중간관리자는 본인 것만 보도록 리스트 교체
+            facilities = myFacilities;
+        }
+
+        req.setAttribute("isAdmin", perm == Permission.ADMIN);
+        req.setAttribute("userPermission", perm.name().trim());
         req.setAttribute("facilities", facilities);
         req.setAttribute("managers", managers);
         req.getRequestDispatcher("/WEB-INF/views/fragments/facilitymanageviewresponse.jsp")

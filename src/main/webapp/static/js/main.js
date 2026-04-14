@@ -118,6 +118,7 @@
             item.addEventListener('click', function (e) {
                 var href = item.getAttribute('href');
                 if (!href || href === '#') return;
+                
                 e.preventDefault();
                 App.loadContent(href);
             });

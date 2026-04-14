@@ -24,6 +24,12 @@ public class FacilityService {
         Connection conn = getConnection();
         List<Facility> list = facilityDao.findAll(conn);
         if (list == null) list = Collections.emptyList();
+        
+        System.out.println("DEBUG: [FacilityService] DB에서 조회된 시설 리스트: " + list);
+        for (Facility f : list) {
+            System.out.println("  - " + f.getName() + " (ID: " + f.getFacilityId() + ")");
+        }
+
         close(conn);
         return list;
     }

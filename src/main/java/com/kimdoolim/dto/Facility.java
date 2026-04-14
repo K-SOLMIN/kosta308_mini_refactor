@@ -64,4 +64,14 @@ public class Facility {
     public int     getMaxReservationValue()  { return maxReservationValue; }
     public boolean isDelete()                { return isDelete; }
     public String  getStatus()               { return status; }
+
+    @Override
+    public String toString() {
+        return "Facility{" +
+                "id=" + facilityId +
+                ", name='" + name + '\'' +
+                ", location='" + location + '\'' +
+                ", status='" + status + '\'' +
+                '}';
+    }
 }

@@ -4,37 +4,46 @@
 
     /* ── 페이지 상태 ── */
     var state = {
-        facilities:   [],
-        managers:     [],
-        filterStatus: 'all',
-        searchText:   '',
-        editingId:    null,
-        isAdmin:      false
+        facilities:     [],
+        managers:       [],
+        filterStatus:   'all',
+        searchText:     '',
+        editingId:      null,
+        isAdmin:        false,
+        userPermission: 'USER'
     };
 
     /* ══════════════════════════════════════════
        초기화
     ══════════════════════════════════════════ */
     function init() {
-        var data = window.__FACILITY_DATA__ || {};
-        state.isAdmin   = !!data.isAdmin;
+        var bridge = document.getElementById('fmDataBridge');
+        if (!bridge) {
+            console.error('[FacilityManage] Data bridge not found.');
+            return;
+        }
 
-        // 서버 데이터가 없거나 비어있으면 Mock 데이터 사용 (테이블이 없는 경우 대비)
-        var serverList = data.facilities || [];
-        state.facilities = serverList.length > 0 ? serverList : getMockFacilities();
+        // HTML 속성에서 기본 정보 읽기
+        state.isAdmin        = bridge.dataset.isAdmin === 'true';
+        state.userPermission = (bridge.dataset.userPermission || 'USER').trim();
 
-        var serverManagers = data.managers || [];
-        state.managers = serverManagers.length > 0 ? serverManagers : getMockManagers();
+        // JSON 데이터 읽기
+        try {
+            var facJson = document.getElementById('fmFacilitiesJson');
+            state.facilities = facJson ? JSON.parse(facJson.textContent) : [];
+
+            var mgrJson = document.getElementById('fmManagersJson');
+            state.managers = mgrJson ? JSON.parse(mgrJson.textContent) : [];
+        } catch (e) {
+            console.error('[FacilityManage] JSON parse error:', e);
+            state.facilities = [];
+            state.managers = [];
+        }
 
         renderStats();
         renderTable();
         populateManagerSelect();
         setupListeners();
-
-        // 테이블이 없을 경우를 대비한 안내 (콘솔)
-        if (serverList.length === 0) {
-            console.warn('[FacilityManage] 서버 데이터가 없어 Mock 데이터를 로드했습니다.');
-        }
     }
 
     /* ══════════════════════════════════════════
@@ -153,14 +162,29 @@
         setText('fmResultCount', filtered.length + '개 시설');
 
         if (filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="' + colSpan + '" class="dash-empty">조건에 맞는 시설이 없습니다.</td></tr>';
+            var emptyMsg = "조건에 맞는 시설이 없습니다.";
+            console.log(state.facilities.length);
+            console.log(state.userPermission);
+            // DB에 데이터 자체가 하나도 없는 경우 (전체 리스트가 0건인 경우)
+            if (state.facilities.length === 0) {
+                if (state.userPermission === 'ADMIN') {
+                    emptyMsg = "등록된 시설이 없습니다.";
+                } else if (state.userPermission === 'MIDDLEADMIN') {
+                    emptyMsg = "관리 중인 시설이 없습니다.";
+                }
+            }
+            
+            tbody.innerHTML = '<tr><td colspan="' + colSpan + '" class="dash-empty">' + emptyMsg + '</td></tr>';
             return;
         }
 
         tbody.innerHTML = filtered.map(function (f, i) {
+            // 중간관리자는 담당자 변경 불가
+            var canReassign = state.userPermission === 'ADMIN';
+            
             var managerCell = f.managerName
                 ? '<span class="td-name">' + esc(f.managerName) + '</span>'
-                : '<span class="fm-no-mgr" data-action="reassign">미배정 (클릭)</span>';
+                : (canReassign ? '<span class="fm-no-mgr" data-action="reassign">미배정 (클릭)</span>' : '<span class="fm-no-mgr">미배정</span>');
 
             var manageCell = state.isAdmin
                 ? '<td class="fm-manage-cell">'
@@ -173,7 +197,7 @@
                 + '<td class="col-idx">' + (i + 1) + '</td>'
                 + '<td class="td-name">' + esc(f.name) + '</td>'
                 + '<td>' + esc(f.location) + '</td>'
-                + '<td style="cursor:pointer" data-action="reassign">' + managerCell + '</td>'
+                + '<td style="' + (canReassign ? 'cursor:pointer' : '') + '" ' + (canReassign ? 'data-action="reassign"' : '') + '>' + managerCell + '</td>'
                 + '<td class="col-num">' + f.capacity + '명</td>'
                 + '<td class="col-num">' + f.maxValue + f.maxUnit + '</td>'
                 + '<td class="col-status">' + statusBadge(f.status) + '</td>'

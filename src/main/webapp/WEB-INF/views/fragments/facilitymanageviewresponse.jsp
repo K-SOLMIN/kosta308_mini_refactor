@@ -14,41 +14,45 @@
     int colCount = isAdmin ? 8 : 7;
 %>
 
-<script>
-/* ── 서버 → 클라이언트 데이터 전달 ── */
-window.__FACILITY_DATA__ = {
-    isAdmin: <%= isAdmin %>,
-    facilities: [<%
-        for (int i = 0; i < facilities.size(); i++) {
-            Facility f = facilities.get(i);
-            String mgrName = f.getManagerName() != null ? f.getManagerName().replace("'","\'") : "";
-            String facName = f.getName()        != null ? f.getName().replace("'","\'")        : "";
-            String loc     = f.getLocation()    != null ? f.getLocation().replace("'","\'")    : "";
-    %>{
-        id:<%= f.getFacilityId() %>,
-        name:'<%= facName %>',
-        location:'<%= loc %>',
-        managerId:<%= f.getManagerId() != null ? f.getManagerId() : "null" %>,
-        managerName:'<%= mgrName %>',
-        capacity:<%= f.getMaxCapacity() %>,
-        maxValue:<%= f.getMaxReservationValue() %>,
-        maxUnit:'<%= f.getMaxReservationUnit() %>',
-        status:'<%= f.getStatus() %>'
-    }<%= i < facilities.size() - 1 ? "," : "" %><%
-        }
-    %>],
-    managers: [<%
-        for (int i = 0; i < managers.size(); i++) {
-            User m = managers.get(i);
-            String name = m.getName() != null ? m.getName().replace("'","\'") : "";
-    %>{
-        id:<%= m.getUserId() %>,
-        name:'<%= name %>'
-    }<%= i < managers.size() - 1 ? "," : "" %><%
-        }
-    %>]
-};
-</script>
+<!-- ── SPA 데이터 브릿지 (Script 태그 대신 사용) ── -->
+<div id="fmDataBridge" 
+     data-is-admin="<%= isAdmin %>"
+     data-user-permission="<%= request.getAttribute("userPermission") %>"
+     style="display:none;">
+     <script id="fmFacilitiesJson" type="application/json">
+        [<%
+            for (int i = 0; i < facilities.size(); i++) {
+                Facility f = facilities.get(i);
+                String mgrName = f.getManagerName() != null ? f.getManagerName().replace("'","\'") : "";
+                String facName = f.getName()        != null ? f.getName().replace("'","\'")        : "";
+                String loc     = f.getLocation()    != null ? f.getLocation().replace("'","\'")    : "";
+        %>{
+            "id":<%= f.getFacilityId() %>,
+            "name":"<%= facName %>",
+            "location":"<%= loc %>",
+            "managerId":<%= f.getManagerId() != null ? f.getManagerId() : "null" %>,
+            "managerName":"<%= mgrName %>",
+            "capacity":<%= f.getMaxCapacity() %>,
+            "maxValue":<%= f.getMaxReservationValue() %>,
+            "maxUnit":"<%= f.getMaxReservationUnit() %>",
+            "status":"<%= f.getStatus() %>"
+        }<%= i < facilities.size() - 1 ? "," : "" %><%
+            }
+        %>]
+     </script>
+     <script id="fmManagersJson" type="application/json">
+        [<%
+            for (int i = 0; i < managers.size(); i++) {
+                User m = managers.get(i);
+                String name = m.getName() != null ? m.getName().replace("'","\'") : "";
+        %>{
+            "id":<%= m.getUserId() %>,
+            "name":"<%= name %>"
+        }<%= i < managers.size() - 1 ? "," : "" %><%
+            }
+        %>]
+     </script>
+</div>
 
 <!-- ══════════════════════════════════════════
      페이지 헤더
@@ -64,7 +68,7 @@ window.__FACILITY_DATA__ = {
 </div>
 
 <!-- ══════════════════════════════════════════
-     주의 필요 배너 (JS가 이슈 있을 때 활성화)
+     주의 필요 배너
 ══════════════════════════════════════════ -->
 <div class="fm-alert-banner" id="fmAlertBanner">
     <span class="fm-alert-icon">▲</span>

@@ -133,7 +133,7 @@
             <a href="#" class="menu-item">
                 <span class="menu-icon">◆</span> 예약 관리
             </a>
-            <a href="<%= ctx %>/facility.do" class="menu-item" data-spa="true" onclick="if(window.App) { event.preventDefault(); App.navigate(this.href); }">
+            <a href="<%= ctx %>/facility.do" class="menu-item" data-spa="true">
                 <span class="menu-icon">◆</span> 시설 관리
             </a>
             <a href="#" class="menu-item">
