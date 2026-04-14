@@ -17,6 +17,7 @@ import java.io.IOException;
 public class LoginServlet extends HttpServlet {
 
     private static final String COOKIE_NAME = "savedId";
+    private static final String AUTO_LOGIN_COOKIE = "autoLoginToken";
     private static final int    COOKIE_AGE  = 60 * 60 * 24 * 30; // 30일
 
     private final LoginService loginService = new LoginService();
@@ -28,6 +29,7 @@ public class LoginServlet extends HttpServlet {
         String id        = req.getParameter("userId");
         String password  = req.getParameter("userPw");
         boolean remember = "on".equals(req.getParameter("rememberMe"));
+        boolean autoLogin = "on".equals(req.getParameter("autoLogin"));
 
         User user = loginService.login(id, password);
 
@@ -48,6 +50,20 @@ public class LoginServlet extends HttpServlet {
         cookie.setMaxAge(remember ? COOKIE_AGE : 0);
         cookie.setPath("/");
         resp.addCookie(cookie);
+
+        // 자동 로그인 쿠키 처리
+        if (autoLogin) {
+            String token = com.kimdoolim.common.AutoLoginManager.generateToken(user);
+            Cookie autoCookie = new Cookie(AUTO_LOGIN_COOKIE, token);
+            autoCookie.setMaxAge(COOKIE_AGE);
+            autoCookie.setPath("/");
+            resp.addCookie(autoCookie);
+        } else {
+            Cookie autoCookie = new Cookie(AUTO_LOGIN_COOKIE, "");
+            autoCookie.setMaxAge(0);
+            autoCookie.setPath("/");
+            resp.addCookie(autoCookie);
+        }
 
         // 중복 로그인 감지
         if (SessionManager.hasActiveSession(user.getUserId())) {

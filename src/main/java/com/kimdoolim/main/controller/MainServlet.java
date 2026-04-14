@@ -16,7 +16,14 @@ public class MainServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         User loginUser = (User) req.getSession().getAttribute("loginUser");
         if (loginUser == null) {
-            resp.sendRedirect(req.getContextPath() + "/index.jsp");
+            boolean isFetch = "true".equals(req.getHeader("X-Fetch-Request"));
+            if (isFetch) {
+                resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                resp.setContentType("application/json; charset=UTF-8");
+                resp.getWriter().write("{\"error\":\"unauthorized\"}");
+            } else {
+                resp.sendRedirect(req.getContextPath() + "/index.jsp");
+            }
             return;
         }
         req.getRequestDispatcher("/WEB-INF/views/main.jsp").forward(req, resp);

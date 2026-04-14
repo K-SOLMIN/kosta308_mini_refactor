@@ -32,7 +32,7 @@
     <title>SBLIM - 대시보드</title>
     <meta name="ctx" content="<%= request.getContextPath() %>">
     <meta name="isMiddleAdmin" content="<%= isMiddleAdmin %>">
-    <link rel="stylesheet" href="<%= request.getContextPath() %>/static/css/main.css">
+    <link rel="stylesheet" href="<%= request.getContextPath() %>/static/css/main.css?v=<%=System.currentTimeMillis()%>">
 </head>
 <body>
 
@@ -92,7 +92,7 @@
         <!-- 예약 -->
         <div class="menu-section">
             <div class="menu-section-label">예약</div>
-            <a href="<%= ctx %>/main.do" class="menu-item active">
+            <a href="<%= ctx %>/main.do" class="menu-item active" data-spa="true">
                 <span class="menu-icon">■</span> 대시보드
             </a>
             <% if (isActive) { %>
@@ -133,7 +133,7 @@
             <a href="#" class="menu-item">
                 <span class="menu-icon">◆</span> 예약 관리
             </a>
-            <a href="#" class="menu-item">
+            <a href="<%= ctx %>/facility.do" class="menu-item" data-spa="true">
                 <span class="menu-icon">◆</span> 시설 관리
             </a>
             <a href="#" class="menu-item">
@@ -183,6 +183,38 @@
             예약하기, 알림 등 일부 기능 이용이 제한됩니다. 이용 문의는 시스템 관리자에게 연락하세요.
         </div>
         <% } %>
+
+        <!-- ── 요약 통계 카드 ── -->
+        <div class="stat-row">
+            <div class="stat-card stat-blue">
+                <div class="stat-icon-wrap blue">≡</div>
+                <div class="stat-body">
+                    <div class="stat-num" id="statWeekCount">-</div>
+                    <div class="stat-lbl">이번 주 내 예약</div>
+                </div>
+            </div>
+            <div class="stat-card stat-gold">
+                <div class="stat-icon-wrap gold">◐</div>
+                <div class="stat-body">
+                    <div class="stat-num" id="statPendingCount">-</div>
+                    <div class="stat-lbl">대기 중</div>
+                </div>
+            </div>
+            <div class="stat-card stat-green">
+                <div class="stat-icon-wrap green">✔</div>
+                <div class="stat-body">
+                    <div class="stat-num" id="statApprovedCount">-</div>
+                    <div class="stat-lbl">승인됨</div>
+                </div>
+            </div>
+            <div class="stat-card stat-red">
+                <div class="stat-icon-wrap red">◉</div>
+                <div class="stat-body">
+                    <div class="stat-num" id="statAlarmCount">-</div>
+                    <div class="stat-lbl">미읽 알림</div>
+                </div>
+            </div>
+        </div>
 
         <div class="dash-grid">
 
@@ -243,15 +275,35 @@
 
             </div>
 
-            <!-- ── 오른쪽: 시계 ── -->
+            <!-- ── 오른쪽: 시계 + 교시 + 알림 ── -->
             <div class="dash-right">
+
+                <!-- 시계 -->
                 <div class="clock-card">
-                    <div class="clock-day"   id="clockDay"></div>
-                    <div class="clock-date"  id="clockDate"></div>
+                    <div class="clock-day"  id="clockDay"></div>
+                    <div class="clock-date" id="clockDate"></div>
                     <div class="clock-divider"></div>
-                    <div class="clock-time"  id="clockTime"></div>
+                    <div class="clock-time" id="clockTime"></div>
                     <div class="clock-label">현재 시각</div>
                 </div>
+
+                <!-- 오늘 교시 현황 -->
+                <div class="dash-card">
+                    <div class="dash-card-header">
+                        <span class="dash-card-title">오늘 교시 현황</span>
+                    </div>
+                    <div id="periodList" class="period-list"></div>
+                </div>
+
+                <!-- 최근 알림 -->
+                <div class="dash-card">
+                    <div class="dash-card-header">
+                        <span class="dash-card-title">최근 알림</span>
+                        <a href="#" class="dash-card-link">전체보기</a>
+                    </div>
+                    <div id="alarmList" class="alarm-list"></div>
+                </div>
+
             </div>
 
         </div>

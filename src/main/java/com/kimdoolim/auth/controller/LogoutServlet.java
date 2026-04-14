@@ -21,9 +21,17 @@ public class LogoutServlet extends HttpServlet {
             User user = (User) session.getAttribute("loginUser");
             if (user != null) {
                 SessionManager.remove(user.getUserId());
+                com.kimdoolim.common.AutoLoginManager.removeByUserId(user.getUserId());
             }
             session.invalidate();
         }
+
+        // 자동 로그인 쿠키 삭제
+        jakarta.servlet.http.Cookie autoCookie = new jakarta.servlet.http.Cookie("autoLoginToken", "");
+        autoCookie.setMaxAge(0);
+        autoCookie.setPath("/");
+        resp.addCookie(autoCookie);
+
         resp.sendRedirect(req.getContextPath() + "/index.jsp");
     }
 }

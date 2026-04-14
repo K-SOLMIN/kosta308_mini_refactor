@@ -1,16 +1,50 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ page import="jakarta.servlet.http.Cookie" %>
+<%@ page import="com.kimdoolim.dto.User" %>
+<%@ page import="com.kimdoolim.common.AutoLoginManager" %>
+<%@ page import="com.kimdoolim.common.SessionManager" %>
 <%
+    // 이미 로그인된 세션이 있는 경우 메인으로 이동
+    if (session.getAttribute("loginUser") != null) {
+        response.sendRedirect(request.getContextPath() + "/main.do");
+        return;
+    }
+
     String savedId = "";
     boolean remembered = false;
+    String autoLoginToken = null;
+
     Cookie[] cookies = request.getCookies();
     if (cookies != null) {
         for (Cookie c : cookies) {
             if ("savedId".equals(c.getName()) && !c.getValue().isEmpty()) {
                 savedId = c.getValue();
                 remembered = true;
-                break;
+            } else if ("autoLoginToken".equals(c.getName()) && !c.getValue().isEmpty()) {
+                autoLoginToken = c.getValue();
             }
+        }
+    }
+
+    // 자동 로그인 처리
+    if (autoLoginToken != null) {
+        User autoUser = AutoLoginManager.getUser(autoLoginToken);
+        if (autoUser != null && autoUser.isActive()) {
+            // 중복 로그인 체크 (기존 세션 있으면 만료시키거나 새로 등록)
+            if (SessionManager.hasActiveSession(autoUser.getUserId())) {
+                SessionManager.invalidateExisting(autoUser.getUserId());
+            }
+
+            session.setAttribute("loginUser", autoUser);
+            SessionManager.register(autoUser.getUserId(), session);
+            response.sendRedirect(request.getContextPath() + "/main.do");
+            return;
+        } else {
+            // 유효하지 않은 토큰이면 쿠키 삭제
+            Cookie invalidAutoCookie = new Cookie("autoLoginToken", "");
+            invalidAutoCookie.setMaxAge(0);
+            invalidAutoCookie.setPath("/");
+            response.addCookie(invalidAutoCookie);
         }
     }
 
@@ -25,7 +59,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SBLIM - 학교 시설 예약 관리 시스템</title>
-    <link rel="stylesheet" href="<%= request.getContextPath() %>/static/css/index.css">
+    <link rel="stylesheet" href="<%= request.getContextPath() %>/static/css/index.css?v=<%=System.currentTimeMillis()%>">
 </head>
 <body>
 
@@ -82,6 +116,9 @@
                     <div class="login-options">
                         <label class="checkbox-label">
                             <input type="checkbox" name="rememberMe" <%= remembered ? "checked" : "" %>> 아이디 저장
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="autoLogin"> 자동 로그인
                         </label>
                     </div>
 
