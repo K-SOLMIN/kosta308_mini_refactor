@@ -657,12 +657,113 @@ body {
 }
 .btn-secondary:hover { border-color: #1a3a6b; color: #1a3a6b; }
 
-/* ── 상태 뱃지 추가 (점검) ── */
-.status-badge.inspection { background-color: #e8f0fb; color: #1a5bb5; }
-
 /* ══════════════════════════════════════════
-   페이지 헤더 행 (타이틀 + 액션 버튼)
+   시설 관리 — 상태 바 & 통계
 ══════════════════════════════════════════ */
+.fm-status-bar-wrap {
+    background: #fff;
+    border: 1px solid #dce4ed;
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+}
+.fm-bar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 12px;
+}
+.fm-bar-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1a3a6b;
+}
+.fm-bar-total {
+    font-size: 12px;
+    color: #8a9bab;
+}
+
+.fm-status-bar {
+    height: 10px;
+    background: #f0f3f6;
+    border-radius: 5px;
+    display: flex;
+    overflow: hidden;
+    margin-bottom: 14px;
+}
+.fm-bar-segment { height: 100%; transition: width 0.3s ease; }
+.fm-bar-segment.normal     { background-color: #34a853; }
+.fm-bar-segment.repair     { background-color: #fbbc05; }
+.fm-bar-segment.inspection { background-color: #4285f4; }
+.fm-bar-empty { 
+    width: 100%; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 11px; 
+    color: #aab8c4; 
+}
+
+.fm-bar-legend {
+    display: flex;
+    gap: 20px;
+}
+.fm-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #6a86aa;
+}
+.fm-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+.fm-dot.normal     { background-color: #34a853; }
+.fm-dot.repair     { background-color: #fbbc05; }
+.fm-dot.inspection { background-color: #4285f4; }
+
+/* ── 주의 배너 ── */
+.fm-alert-banner {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    background: #fff8f0;
+    border: 1px solid #ffe8cc;
+    border-radius: 4px;
+    padding: 10px 16px;
+    margin-bottom: 20px;
+}
+.fm-alert-icon {
+    font-size: 14px;
+    color: #d08800;
+}
+.fm-alert-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #905a00;
+}
+.fm-alert-chips {
+    display: flex;
+    gap: 8px;
+}
+.fm-alert-chip {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+.fm-alert-chip.red  { background: #fbeaea; color: #a02020; }
+.fm-alert-chip.gold { background: #fef5e0; color: #b07800; }
+
+.stat-sub {
+    font-size: 11px;
+    color: #1a7a38;
+    margin-top: 4px;
+    font-weight: 600;
+}
+
 .page-header-row {
     display: flex;
     align-items: flex-start;
@@ -967,12 +1068,39 @@ body {
     padding-top: 8px;
 }
 
-.form-radio {
+/* ── 담당자 재배정 옵션 리스트 ── */
+.mgr-option-list {
     display: flex;
-    align-items: center;
-    gap: 5px;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 240px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.mgr-option-list::-webkit-scrollbar { width: 4px; }
+.mgr-option-list::-webkit-scrollbar-thumb { background: #dce4ed; border-radius: 2px; }
+
+.mgr-opt {
+    padding: 10px 14px;
+    background: #f8f9fb;
+    border: 1px solid #e8ecf4;
+    border-radius: 4px;
     font-size: 13px;
     color: #1e2d45;
     cursor: pointer;
-    user-select: none;
+    transition: all 0.1s;
+}
+.mgr-opt:hover { border-color: #1a3a6b; background: #f0f4f8; }
+.mgr-opt.selected { 
+    background: #1a3a6b; 
+    border-color: #1a3a6b; 
+    color: #fff; 
+    font-weight: 600; 
+}
+
+.fm-reassign-target {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a3a6b;
+    margin-bottom: 4px;
 }

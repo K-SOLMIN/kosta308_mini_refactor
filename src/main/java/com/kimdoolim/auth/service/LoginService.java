@@ -1,7 +1,9 @@
 package com.kimdoolim.auth.service;
 
 import com.kimdoolim.auth.dao.LoginDao;
+import com.kimdoolim.common.Mysql;
 import com.kimdoolim.dto.User;
+import java.sql.Connection;
 
 public class LoginService {
 
@@ -11,6 +13,11 @@ public class LoginService {
         if (id == null || id.isBlank() || password == null || password.isBlank()) {
             return null;
         }
-        return loginDao.findByIdAndPassword(id, password);
+        
+        Connection conn = Mysql.getConnection();
+        User user = loginDao.findByIdAndPassword(conn, id, password);
+        Mysql.close(conn);
+        
+        return user;
     }
 }

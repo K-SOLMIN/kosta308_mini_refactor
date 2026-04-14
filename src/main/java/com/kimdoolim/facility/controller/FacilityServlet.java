@@ -3,7 +3,7 @@ package com.kimdoolim.facility.controller;
 import com.kimdoolim.dto.Facility;
 import com.kimdoolim.dto.Permission;
 import com.kimdoolim.dto.User;
-import com.kimdoolim.facility.dao.FacilityDao;
+import com.kimdoolim.facility.service.FacilityService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -17,7 +17,7 @@ import java.util.List;
 @WebServlet("/facility.do")
 public class FacilityServlet extends HttpServlet {
 
-    private final FacilityDao facilityDao = new FacilityDao();
+    private final FacilityService facilityService = new FacilityService();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
@@ -53,12 +53,16 @@ public class FacilityServlet extends HttpServlet {
             return;
         }
 
-        // ── ADMIN: 전체 시설 목록, MIDDLEADMIN: 자신이 담당하는 시설 ──
-        boolean isAdmin = loginUser.getPermission() == Permission.ADMIN;
-        List<Facility> facilities = facilityDao.findAll();
+        // ── 데이터 조회 ──
+        // 중간 관리자 이상이면 관리 기능을 사용할 수 있도록 함
+        boolean isAdmin = loginUser.getPermission() == Permission.ADMIN 
+                       || loginUser.getPermission() == Permission.MIDDLEADMIN;
+        List<Facility> facilities = facilityService.getAllFacilities();
+        List<User> managers       = facilityService.getAvailableManagers();
 
         req.setAttribute("isAdmin", isAdmin);
         req.setAttribute("facilities", facilities);
+        req.setAttribute("managers", managers);
         req.getRequestDispatcher("/WEB-INF/views/fragments/facilitymanageviewresponse.jsp")
            .forward(req, resp);
     }
@@ -76,7 +80,9 @@ public class FacilityServlet extends HttpServlet {
             sendJson(resp, HttpServletResponse.SC_UNAUTHORIZED, "{\"error\":\"unauthorized\"}");
             return;
         }
-        if (loginUser.getPermission() != Permission.ADMIN) {
+        
+        // 중간 관리자 이상만 POST 요청(등록/수정/삭제) 가능
+        if (loginUser.getPermission() == Permission.USER) {
             sendJson(resp, HttpServletResponse.SC_FORBIDDEN, "{\"error\":\"forbidden\"}");
             return;
         }
@@ -86,14 +92,14 @@ public class FacilityServlet extends HttpServlet {
 
         switch (action == null ? "" : action) {
             case "save":
-                ok = facilityDao.save(buildFacility(req, false));
+                ok = facilityService.registerFacility(buildFacility(req, false));
                 break;
             case "update":
-                ok = facilityDao.update(buildFacility(req, true));
+                ok = facilityService.modifyFacility(buildFacility(req, true));
                 break;
             case "delete":
                 long facilityId = Long.parseLong(req.getParameter("facilityId"));
-                ok = facilityDao.softDelete(facilityId);
+                ok = facilityService.removeFacility(facilityId);
                 break;
             default:
                 sendJson(resp, HttpServletResponse.SC_BAD_REQUEST, "{\"error\":\"unknown action\"}");

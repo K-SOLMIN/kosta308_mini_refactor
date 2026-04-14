@@ -8,8 +8,12 @@
     @SuppressWarnings("unchecked")
     List<Facility> facilities = (List<Facility>) request.getAttribute("facilities");
     if (facilities == null) facilities = java.util.Collections.emptyList();
+    @SuppressWarnings("unchecked")
+    List<User> managers = (List<User>) request.getAttribute("managers");
+    if (managers == null) managers = java.util.Collections.emptyList();
     int colCount = isAdmin ? 8 : 7;
 %>
+
 <script>
 /* ── 서버 → 클라이언트 데이터 전달 ── */
 window.__FACILITY_DATA__ = {
@@ -18,8 +22,8 @@ window.__FACILITY_DATA__ = {
         for (int i = 0; i < facilities.size(); i++) {
             Facility f = facilities.get(i);
             String mgrName = f.getManagerName() != null ? f.getManagerName().replace("'","\'") : "";
-            String facName = f.getName() != null ? f.getName().replace("'","\'") : "";
-            String loc     = f.getLocation() != null ? f.getLocation().replace("'","\'") : "";
+            String facName = f.getName()        != null ? f.getName().replace("'","\'")        : "";
+            String loc     = f.getLocation()    != null ? f.getLocation().replace("'","\'")    : "";
     %>{
         id:<%= f.getFacilityId() %>,
         name:'<%= facName %>',
@@ -32,22 +36,45 @@ window.__FACILITY_DATA__ = {
         status:'<%= f.getStatus() %>'
     }<%= i < facilities.size() - 1 ? "," : "" %><%
         }
+    %>],
+    managers: [<%
+        for (int i = 0; i < managers.size(); i++) {
+            User m = managers.get(i);
+            String name = m.getName() != null ? m.getName().replace("'","\'") : "";
+    %>{
+        id:<%= m.getUserId() %>,
+        name:'<%= name %>'
+    }<%= i < managers.size() - 1 ? "," : "" %><%
+        }
     %>]
 };
 </script>
 
-<!-- ── 페이지 헤더 ── -->
+<!-- ══════════════════════════════════════════
+     페이지 헤더
+══════════════════════════════════════════ -->
 <div class="page-header-row">
     <div>
         <div class="page-title">시설 관리</div>
-        <div class="page-subtitle">등록된 시설 현황을 조회하고 관리합니다.</div>
+        <div class="page-subtitle">등록된 시설 현황을 한눈에 조회하고 관리합니다.</div>
     </div>
     <% if (isAdmin) { %>
     <button class="btn-primary" id="btnAddFacility">+ 시설 등록</button>
     <% } %>
 </div>
 
-<!-- ── 요약 통계 카드 ── -->
+<!-- ══════════════════════════════════════════
+     주의 필요 배너 (JS가 이슈 있을 때 활성화)
+══════════════════════════════════════════ -->
+<div class="fm-alert-banner" id="fmAlertBanner">
+    <span class="fm-alert-icon">▲</span>
+    <span class="fm-alert-label">주의 필요</span>
+    <div class="fm-alert-chips" id="fmAlertChips"></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     요약 통계 카드 4개
+══════════════════════════════════════════ -->
 <div class="stat-row">
     <div class="stat-card stat-blue">
         <div class="stat-icon-wrap blue">▦</div>
@@ -61,17 +88,18 @@ window.__FACILITY_DATA__ = {
         <div class="stat-body">
             <div class="stat-num" id="fmStatNormal">-</div>
             <div class="stat-lbl">정상 운영</div>
+            <div class="stat-sub" id="fmStatNormalPct"></div>
         </div>
     </div>
     <div class="stat-card stat-gold">
-        <div class="stat-icon-wrap gold">◐</div>
+        <div class="stat-icon-wrap gold">⚙</div>
         <div class="stat-body">
             <div class="stat-num" id="fmStatIssue">-</div>
-            <div class="stat-lbl">수리·점검</div>
+            <div class="stat-lbl">수리·점검 중</div>
         </div>
     </div>
     <div class="stat-card stat-red">
-        <div class="stat-icon-wrap red">◉</div>
+        <div class="stat-icon-wrap red">!</div>
         <div class="stat-body">
             <div class="stat-num" id="fmStatNoMgr">-</div>
             <div class="stat-lbl">담당자 없음</div>
@@ -79,7 +107,21 @@ window.__FACILITY_DATA__ = {
     </div>
 </div>
 
-<!-- ── 필터 + 검색 ── -->
+<!-- ══════════════════════════════════════════
+     시설 상태 분포 바
+══════════════════════════════════════════ -->
+<div class="fm-status-bar-wrap">
+    <div class="fm-bar-header">
+        <span class="fm-bar-title">시설 상태 분포</span>
+        <span class="fm-bar-total" id="fmBarTotal"></span>
+    </div>
+    <div class="fm-status-bar" id="fmStatusBar"></div>
+    <div class="fm-bar-legend" id="fmBarLegend"></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     필터 + 검색 영역
+══════════════════════════════════════════ -->
 <div class="fm-controls">
     <div class="fm-filter-tabs">
         <button class="fm-filter-tab active" data-filter="all">전체</button>
@@ -91,7 +133,9 @@ window.__FACILITY_DATA__ = {
     <span class="fm-result-count" id="fmResultCount"></span>
 </div>
 
-<!-- ── 시설 목록 테이블 ── -->
+<!-- ══════════════════════════════════════════
+     시설 목록 테이블
+══════════════════════════════════════════ -->
 <div class="dash-card">
     <div class="dash-card-body">
         <table class="dash-table">
@@ -101,7 +145,7 @@ window.__FACILITY_DATA__ = {
                     <th>시설명</th>
                     <th>위치</th>
                     <th>담당자</th>
-                    <th class="col-num">최대인원</th>
+                    <th class="col-num">수용인원</th>
                     <th class="col-num">최대예약</th>
                     <th class="col-status">상태</th>
                     <% if (isAdmin) { %><th class="col-manage">관리</th><% } %>
@@ -114,14 +158,18 @@ window.__FACILITY_DATA__ = {
     </div>
 </div>
 
-<!-- ── 시설 등록·수정 모달 ── -->
+<!-- ══════════════════════════════════════════
+     모달 (ADMIN only)
+══════════════════════════════════════════ -->
 <% if (isAdmin) { %>
+
+<!-- ── 시설 등록·수정 모달 ── -->
 <div class="modal-overlay" id="facilityModal">
     <div class="modal">
 
         <div class="modal-header">
-            <span class="modal-title" id="modalTitle">시설 등록</span>
-            <button class="modal-close" id="modalClose" type="button">✕</button>
+            <span class="modal-title" id="fmModalTitle">시설 등록</span>
+            <button class="modal-close" id="fmModalClose" type="button">✕</button>
         </div>
 
         <div class="modal-body">
@@ -179,10 +227,34 @@ window.__FACILITY_DATA__ = {
         </div>
 
         <div class="modal-footer">
-            <button class="btn-secondary" id="modalCancel" type="button">취소</button>
-            <button class="btn-primary"   id="modalSubmit" type="button">등록</button>
+            <button class="btn-secondary" id="fmModalCancel" type="button">취소</button>
+            <button class="btn-primary"   id="fmModalSubmit" type="button">등록</button>
         </div>
 
     </div>
 </div>
+
+<!-- ── 담당자 재배정 모달 ── -->
+<div class="modal-overlay" id="reassignModal">
+    <div class="modal" style="width:380px;">
+
+        <div class="modal-header">
+            <span class="modal-title">담당자 재배정</span>
+            <button class="modal-close" id="reassignModalClose" type="button">✕</button>
+        </div>
+
+        <div class="modal-body" style="padding-bottom:8px;">
+            <div class="fm-reassign-target" id="reassignTargetName"></div>
+            <div style="font-size:12px;color:#8a9bab;margin-bottom:12px;">재배정할 담당자를 선택하세요.</div>
+            <div class="mgr-option-list" id="mgrOptionList"></div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-secondary" id="reassignCancel" type="button">취소</button>
+            <button class="btn-primary"   id="reassignSubmit" type="button">저장</button>
+        </div>
+
+    </div>
+</div>
+
 <% } %>

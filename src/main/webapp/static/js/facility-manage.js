@@ -18,30 +18,39 @@
     function init() {
         var data = window.__FACILITY_DATA__ || {};
         state.isAdmin   = !!data.isAdmin;
-        state.managers  = getMockManagers();
 
-        // 서버 데이터가 있으면 사용, 없으면 Mock
+        // 서버 데이터가 없거나 비어있으면 Mock 데이터 사용 (테이블이 없는 경우 대비)
         var serverList = data.facilities || [];
         state.facilities = serverList.length > 0 ? serverList : getMockFacilities();
+
+        var serverManagers = data.managers || [];
+        state.managers = serverManagers.length > 0 ? serverManagers : getMockManagers();
 
         renderStats();
         renderTable();
         populateManagerSelect();
         setupListeners();
+
+        // 테이블이 없을 경우를 대비한 안내 (콘솔)
+        if (serverList.length === 0) {
+            console.warn('[FacilityManage] 서버 데이터가 없어 Mock 데이터를 로드했습니다.');
+        }
     }
 
     /* ══════════════════════════════════════════
-       Mock 데이터 (DB 연동 전 개발용)
+       Mock 데이터 (풍부하게 보강)
     ══════════════════════════════════════════ */
     function getMockFacilities() {
         return [
-            { id:1, name:'대강당',     location:'본관 3층',  managerId:2, managerName:'김관리', capacity:200, maxValue:1, maxUnit:'주', status:'정상' },
-            { id:2, name:'컴퓨터실 1', location:'별관 2층',  managerId:3, managerName:'이관리', capacity:30,  maxValue:3, maxUnit:'일', status:'정상' },
-            { id:3, name:'컴퓨터실 2', location:'별관 2층',  managerId:3, managerName:'이관리', capacity:30,  maxValue:3, maxUnit:'일', status:'수리' },
-            { id:4, name:'회의실 A',   location:'본관 2층',  managerId:4, managerName:'박관리', capacity:15,  maxValue:2, maxUnit:'일', status:'정상' },
-            { id:5, name:'회의실 B',   location:'본관 2층',  managerId:4, managerName:'박관리', capacity:15,  maxValue:2, maxUnit:'일', status:'점검' },
-            { id:6, name:'세미나실',   location:'본관 4층',  managerId:null, managerName:null,  capacity:50,  maxValue:1, maxUnit:'일', status:'정상' },
-            { id:7, name:'체육관',     location:'운동장동',  managerId:5, managerName:'최관리', capacity:500, maxValue:1, maxUnit:'주', status:'정상' },
+            { id:101, name:'대강당 (Demo)',     location:'본관 3층',  managerId:2, managerName:'김관리', capacity:250, maxValue:1, maxUnit:'주', status:'정상' },
+            { id:102, name:'컴퓨터실 1',      location:'별관 2층',  managerId:3, managerName:'이관리', capacity:40,  maxValue:3, maxUnit:'일', status:'정상' },
+            { id:103, name:'컴퓨터실 2',      location:'별관 2층',  managerId:3, managerName:'이관리', capacity:40,  maxValue:3, maxUnit:'일', status:'수리' },
+            { id:104, name:'회의실 A',        location:'본관 2층',  managerId:4, managerName:'박관리', capacity:15,  maxValue:2, maxUnit:'일', status:'정상' },
+            { id:105, name:'회의실 B (점검)',  location:'본관 2층',  managerId:null, managerName:null,  capacity:12,  maxValue:2, maxUnit:'일', status:'점검' },
+            { id:106, name:'세미나실 101',    location:'본관 1층',  managerId:null, managerName:null,  capacity:60,  maxValue:1, maxUnit:'일', status:'정상' },
+            { id:107, name:'실내 체육관',     location:'체육관동',  managerId:5, managerName:'최관리', capacity:500, maxValue:1, maxUnit:'주', status:'정상' },
+            { id:108, name:'음악실',          location:'별관 4층',  managerId:6, managerName:'수지',   capacity:45,  maxValue:2, maxUnit:'일', status:'정상' },
+            { id:109, name:'무용 연습실',     location:'본관 지하1층', managerId:7, managerName:'솔민',   capacity:20,  maxValue:4, maxUnit:'일', status:'정상' }
         ];
     }
 
@@ -53,7 +62,7 @@
             { id:5, name:'최관리' },
             { id:6, name:'수지' },
             { id:7, name:'솔민' },
-            { id:8, name:'민중' },
+            { id:8, name:'민중' }
         ];
     }
 
@@ -64,13 +73,71 @@
         var all    = state.facilities;
         var total  = all.length;
         var normal = all.filter(function(f) { return f.status === '정상'; }).length;
-        var issue  = all.filter(function(f) { return f.status === '수리' || f.status === '점검'; }).length;
+        var repair = all.filter(function(f) { return f.status === '수리'; }).length;
+        var inspection = all.filter(function(f) { return f.status === '점검'; }).length;
+        var issue  = repair + inspection;
         var noMgr  = all.filter(function(f) { return !f.managerId; }).length;
 
         setText('fmStatTotal',  total);
         setText('fmStatNormal', normal);
         setText('fmStatIssue',  issue);
         setText('fmStatNoMgr',  noMgr);
+
+        var pct = total > 0 ? Math.round((normal / total) * 100) : 0;
+        setText('fmStatNormalPct', total > 0 ? pct + '% 가용 중' : '');
+
+        renderStatusBar(total, normal, repair, inspection);
+        renderAlertBanner(all);
+    }
+
+    function renderStatusBar(total, normal, repair, inspection) {
+        var bar = document.getElementById('fmStatusBar');
+        var legend = document.getElementById('fmBarLegend');
+        var totalEl = document.getElementById('fmBarTotal');
+        if (!bar || !legend) return;
+
+        if (total === 0) {
+            bar.innerHTML = '<div class="fm-bar-empty">데이터 없음</div>';
+            legend.innerHTML = '';
+            if (totalEl) totalEl.textContent = '';
+            return;
+        }
+
+        if (totalEl) totalEl.textContent = '총 ' + total + '개';
+
+        var pNormal = (normal / total) * 100;
+        var pRepair = (repair / total) * 100;
+        var pInspection = (inspection / total) * 100;
+
+        bar.innerHTML = 
+            (pNormal > 0 ? '<div class="fm-bar-segment normal"     style="width:' + pNormal + '%"     title="정상: ' + normal + '"></div>' : '') +
+            (pRepair > 0 ? '<div class="fm-bar-segment repair"     style="width:' + pRepair + '%"     title="수리: ' + repair + '"></div>' : '') +
+            (pInspection > 0 ? '<div class="fm-bar-segment inspection" style="width:' + pInspection + '%" title="점검: ' + inspection + '"></div>' : '');
+
+        legend.innerHTML = 
+            '<div class="fm-legend-item"><span class="fm-dot normal"></span>정상 (' + normal + ')</div>' +
+            '<div class="fm-legend-item"><span class="fm-dot repair"></span>수리 (' + repair + ')</div>' +
+            '<div class="fm-legend-item"><span class="fm-dot inspection"></span>점검 (' + inspection + ')</div>';
+    }
+
+    function renderAlertBanner(all) {
+        var banner = document.getElementById('fmAlertBanner');
+        var chips = document.getElementById('fmAlertChips');
+        if (!banner || !chips) return;
+
+        var repair = all.filter(function(f) { return f.status === '수리'; }).length;
+        var noMgr  = all.filter(function(f) { return !f.managerId; }).length;
+
+        if (repair === 0 && noMgr === 0) {
+            banner.style.display = 'none';
+            return;
+        }
+
+        banner.style.display = 'flex';
+        var html = '';
+        if (repair > 0) html += '<span class="fm-alert-chip red">수리 중 ' + repair + '건</span>';
+        if (noMgr > 0)  html += '<span class="fm-alert-chip gold">담당자 미지정 ' + noMgr + '건</span>';
+        chips.innerHTML = html;
     }
 
     /* ══════════════════════════════════════════
@@ -83,7 +150,6 @@
         var filtered = getFiltered();
         var colSpan  = state.isAdmin ? 8 : 7;
 
-        // 결과 건수 표시
         setText('fmResultCount', filtered.length + '개 시설');
 
         if (filtered.length === 0) {
@@ -94,7 +160,7 @@
         tbody.innerHTML = filtered.map(function (f, i) {
             var managerCell = f.managerName
                 ? '<span class="td-name">' + esc(f.managerName) + '</span>'
-                : '<span class="fm-no-mgr">미배정</span>';
+                : '<span class="fm-no-mgr" data-action="reassign">미배정 (클릭)</span>';
 
             var manageCell = state.isAdmin
                 ? '<td class="fm-manage-cell">'
@@ -107,7 +173,7 @@
                 + '<td class="col-idx">' + (i + 1) + '</td>'
                 + '<td class="td-name">' + esc(f.name) + '</td>'
                 + '<td>' + esc(f.location) + '</td>'
-                + '<td>' + managerCell + '</td>'
+                + '<td style="cursor:pointer" data-action="reassign">' + managerCell + '</td>'
                 + '<td class="col-num">' + f.capacity + '명</td>'
                 + '<td class="col-num">' + f.maxValue + f.maxUnit + '</td>'
                 + '<td class="col-status">' + statusBadge(f.status) + '</td>'
@@ -140,6 +206,7 @@
     function populateManagerSelect() {
         var sel = document.getElementById('fmManager');
         if (!sel) return;
+        sel.innerHTML = '<option value="">담당자 없음</option>';
         state.managers.forEach(function (m) {
             var opt = document.createElement('option');
             opt.value       = m.id;
@@ -175,19 +242,26 @@
         var addBtn = document.getElementById('btnAddFacility');
         if (addBtn) addBtn.addEventListener('click', function () { openModal(null); });
 
-        // 모달 닫기
-        bindClose('modalClose',  closeModal);
-        bindClose('modalCancel', closeModal);
-        var overlay = document.getElementById('facilityModal');
-        if (overlay) {
-            overlay.addEventListener('click', function (e) {
-                if (e.target === overlay) closeModal();
-            });
-        }
+        // 시설 모달 닫기
+        bindClose('fmModalClose',  closeModal);
+        bindClose('fmModalCancel', closeModal);
+        
+        // 담당자 재배정 모달 닫기
+        bindClose('reassignModalClose', function() { toggleDisplay('reassignModal', false); });
+        bindClose('reassignCancel',     function() { toggleDisplay('reassignModal', false); });
+
+        // 모달 외부 클릭 닫기
+        ['facilityModal', 'reassignModal'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('click', function(e) { if(e.target === el) toggleDisplay(id, false); });
+        });
 
         // 모달 제출
-        var submitBtn = document.getElementById('modalSubmit');
+        var submitBtn = document.getElementById('fmModalSubmit');
         if (submitBtn) submitBtn.addEventListener('click', handleSubmit);
+        
+        var reassignBtn = document.getElementById('reassignSubmit');
+        if (reassignBtn) reassignBtn.addEventListener('click', handleReassignSubmit);
 
         // 테이블 이벤트 위임
         var tbody = document.getElementById('fmTableBody');
@@ -211,6 +285,9 @@
 
                 } else if (action === 'cancel-delete') {
                     renderTable();
+                
+                } else if (action === 'reassign') {
+                    openReassignModal(id);
                 }
             });
         }
@@ -221,13 +298,84 @@
         if (el) el.addEventListener('click', fn);
     }
 
+    function toggleDisplay(id, show) {
+        var el = document.getElementById(id);
+        if (el) el.style.display = show ? 'flex' : 'none';
+    }
+
     /* ══════════════════════════════════════════
-       모달
+       담당자 재배정 모달
+    ══════════════════════════════════════════ */
+    function openReassignModal(id) {
+        var fac = state.facilities.find(function(f) { return f.id === id; });
+        if (!fac) return;
+        state.editingId = id;
+
+        setText('reassignTargetName', esc(fac.name) + ' 담당자 변경');
+        
+        var listEl = document.getElementById('mgrOptionList');
+        if (listEl) {
+            listEl.innerHTML = '<div class="mgr-opt' + (!fac.managerId ? ' selected' : '') + '" data-val="">담당자 미지정</div>'
+                + state.managers.map(function(m) {
+                    var sel = (m.id === fac.managerId) ? ' selected' : '';
+                    return '<div class="mgr-opt' + sel + '" data-val="' + m.id + '">' + esc(m.name) + '</div>';
+                }).join('');
+            
+            // 옵션 클릭 이벤트
+            listEl.querySelectorAll('.mgr-opt').forEach(function(opt) {
+                opt.addEventListener('click', function() {
+                    listEl.querySelectorAll('.mgr-opt').forEach(function(o) { o.classList.remove('selected'); });
+                    opt.classList.add('selected');
+                });
+            });
+        }
+        toggleDisplay('reassignModal', true);
+    }
+
+    function handleReassignSubmit() {
+        var sel = document.querySelector('#mgrOptionList .mgr-opt.selected');
+        var mgrId = sel ? sel.dataset.val : '';
+        var fac = state.facilities.find(function(f) { return f.id === state.editingId; });
+        if (!fac) return;
+
+        var mgrObj = mgrId ? state.managers.find(function(m) { return String(m.id) === String(mgrId); }) : null;
+        
+        // 로컬 즉시 반영 (데모용)
+        fac.managerId = mgrId ? parseInt(mgrId, 10) : null;
+        fac.managerName = mgrObj ? mgrObj.name : null;
+
+        toggleDisplay('reassignModal', false);
+        renderStats();
+        renderTable();
+
+        // 서버 전송 시도
+        var ctx = window.App ? App.ctx : '';
+        App.fetch(ctx + '/facility.do', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                action: 'update',
+                facilityId: fac.id,
+                name: fac.name,
+                location: fac.location,
+                managerId: mgrId || '',
+                maxCapacity: fac.capacity,
+                maxReservationUnit: fac.maxUnit,
+                maxReservationValue: fac.maxValue,
+                status: fac.status
+            }).toString()
+        }).catch(function() { 
+            console.log('서버에 테이블이 없어 DB에는 저장되지 않았습니다. (Demo Mode)');
+        });
+    }
+
+    /* ══════════════════════════════════════════
+       시설 모달 (등록/수정)
     ══════════════════════════════════════════ */
     function openModal(facility) {
         var modal     = document.getElementById('facilityModal');
-        var titleEl   = document.getElementById('modalTitle');
-        var submitBtn = document.getElementById('modalSubmit');
+        var titleEl   = document.getElementById('fmModalTitle');
+        var submitBtn = document.getElementById('fmModalSubmit');
         if (!modal) return;
 
         // 폼 초기화
@@ -267,14 +415,10 @@
     }
 
     function closeModal() {
-        var modal = document.getElementById('facilityModal');
-        if (modal) modal.style.display = 'none';
+        toggleDisplay('facilityModal', false);
         state.editingId = null;
     }
 
-    /* ══════════════════════════════════════════
-       폼 제출 (등록 / 수정)
-    ══════════════════════════════════════════ */
     function handleSubmit() {
         var name     = (getVal('fmName')     || '').trim();
         var location = (getVal('fmLocation') || '').trim();
@@ -295,6 +439,7 @@
         var status     = statusEl.value;
         var isEdit     = !!state.editingId;
 
+        // 로컬 즉시 반영 (데모용)
         if (isEdit) {
             var idx = state.facilities.findIndex(function (f) { return f.id === state.editingId; });
             if (idx !== -1) {
@@ -312,7 +457,7 @@
         } else {
             var newId = state.facilities.length > 0
                 ? Math.max.apply(null, state.facilities.map(function (f) { return f.id; })) + 1
-                : 1;
+                : 1000;
             state.facilities.push({
                 id:          newId,
                 name:        name,
@@ -325,12 +470,11 @@
                 status:      status
             });
         }
-
         closeModal();
         renderStats();
         renderTable();
 
-        /* ── 실제 서버 전송 (DB 연동 시 주석 해제) ──
+        // 서버 전송 시도
         var ctx = window.App ? App.ctx : '';
         App.fetch(ctx + '/facility.do', {
             method: 'POST',
@@ -345,14 +489,13 @@
                 maxReservationUnit:  maxUnit,
                 maxReservationValue: maxValue,
                 status:              status
-            })
+            }).toString()
         }).then(function(res) { return res.json(); })
-          .then(function(data) { if (!data.success) alert('처리 중 오류가 발생했습니다.'); });
-        ── */
+          .catch(function() { console.log('Demo Mode: Server update skipped.'); });
     }
 
     /* ══════════════════════════════════════════
-       삭제 (인라인 확인)
+       삭제
     ══════════════════════════════════════════ */
     function showInlineConfirm(id, row) {
         var cell = row ? row.querySelector('.fm-manage-cell') : null;
@@ -368,13 +511,12 @@
         renderStats();
         renderTable();
 
-        /* ── 실제 서버 전송 (DB 연동 시 주석 해제) ──
-        App.fetch(App.ctx + '/facility.do', {
+        var ctx = window.App ? App.ctx : '';
+        App.fetch(ctx + '/facility.do', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ action: 'delete', facilityId: id })
-        });
-        ── */
+            body: new URLSearchParams({ action: 'delete', facilityId: id }).toString()
+        }).catch(function() { console.log('Demo Mode: Server delete skipped.'); });
     }
 
     /* ══════════════════════════════════════════

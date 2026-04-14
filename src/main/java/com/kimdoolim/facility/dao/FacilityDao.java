@@ -1,33 +1,25 @@
 package com.kimdoolim.facility.dao;
 
-import com.kimdoolim.common.Mysql;
 import com.kimdoolim.dto.Facility;
-
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class FacilityDao {
 
-    // ── 전체 시설 조회 (담당자 LEFT JOIN) ──────────────────────────
-    public List<Facility> findAll() {
+    public List<Facility> findAll(Connection conn) {
         String sql =
             "SELECT f.facility_id, f.manager_id, u.name AS manager_name, " +
             "       f.location, f.name, f.max_capacity, " +
             "       f.max_reservation_unit, f.max_reservation_value, f.status " +
-            "FROM facility f " +
-            "LEFT JOIN user u ON f.manager_id = u.user_id " +
+            "FROM FACILITY f " +
+            "LEFT JOIN USER u ON f.manager_id = u.user_id " +
             "WHERE f.is_delete = 0 " +
             "ORDER BY f.facility_id";
 
         List<Facility> list = new ArrayList<>();
-        Connection con = null;
-        PreparedStatement ps = null;
-        ResultSet rs = null;
-        try {
-            con = Mysql.getConnection();
-            ps  = con.prepareStatement(sql);
-            rs  = ps.executeQuery();
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 int mgrId = rs.getInt("manager_id");
                 list.add(Facility.builder()
@@ -43,29 +35,21 @@ public class FacilityDao {
                     .status(rs.getString("status"))
                     .build());
             }
-            Mysql.commit(con);
         } catch (SQLException e) {
-            Mysql.rollback(con);
             e.printStackTrace();
-        } finally {
-            Mysql.close(rs, ps, con);
+            return null; // 에러 발생 시 null 반환
         }
         return list;
     }
 
-    // ── 시설 등록 ──────────────────────────────────────────────────
-    public boolean save(Facility f) {
+    public int save(Connection conn, Facility f) {
         String sql =
-            "INSERT INTO facility " +
+            "INSERT INTO FACILITY " +
             "(manager_id, location, name, max_capacity, " +
             " max_reservation_unit, max_reservation_value, is_delete, status) " +
             "VALUES (?, ?, ?, ?, ?, ?, 0, ?)";
 
-        Connection con = null;
-        PreparedStatement ps = null;
-        try {
-            con = Mysql.getConnection();
-            ps  = con.prepareStatement(sql);
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             setNullableInt(ps, 1, f.getManagerId());
             ps.setString(2, f.getLocation());
             ps.setString(3, f.getName());
@@ -73,32 +57,22 @@ public class FacilityDao {
             ps.setString(5, f.getMaxReservationUnit());
             ps.setInt(6, f.getMaxReservationValue());
             ps.setString(7, f.getStatus());
-            int rows = ps.executeUpdate();
-            Mysql.commit(con);
-            return rows > 0;
+            return ps.executeUpdate();
         } catch (SQLException e) {
-            Mysql.rollback(con);
             e.printStackTrace();
-            return false;
-        } finally {
-            Mysql.close(ps, con);
+            return -1; // 에러 발생 시 -1 반환
         }
     }
 
-    // ── 시설 수정 ──────────────────────────────────────────────────
-    public boolean update(Facility f) {
+    public int update(Connection conn, Facility f) {
         String sql =
-            "UPDATE facility SET " +
+            "UPDATE FACILITY SET " +
             "manager_id = ?, location = ?, name = ?, " +
             "max_capacity = ?, max_reservation_unit = ?, " +
             "max_reservation_value = ?, status = ? " +
             "WHERE facility_id = ?";
 
-        Connection con = null;
-        PreparedStatement ps = null;
-        try {
-            con = Mysql.getConnection();
-            ps  = con.prepareStatement(sql);
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             setNullableInt(ps, 1, f.getManagerId());
             ps.setString(2, f.getLocation());
             ps.setString(3, f.getName());
@@ -107,39 +81,21 @@ public class FacilityDao {
             ps.setInt(6, f.getMaxReservationValue());
             ps.setString(7, f.getStatus());
             ps.setLong(8, f.getFacilityId());
-            int rows = ps.executeUpdate();
-            Mysql.commit(con);
-            return rows > 0;
+            return ps.executeUpdate();
         } catch (SQLException e) {
-            Mysql.rollback(con);
             e.printStackTrace();
-            return false;
-        } finally {
-            Mysql.close(ps, con);
+            return -1;
         }
     }
 
-    // ── 시설 삭제 (Soft Delete) ────────────────────────────────────
-    public boolean softDelete(long facilityId) {
-        String sql =
-            "UPDATE facility SET is_delete = 1, delete_date = NOW() " +
-            "WHERE facility_id = ?";
-
-        Connection con = null;
-        PreparedStatement ps = null;
-        try {
-            con = Mysql.getConnection();
-            ps  = con.prepareStatement(sql);
+    public int softDelete(Connection conn, long facilityId) {
+        String sql = "UPDATE FACILITY SET is_delete = 1, delete_date = NOW() WHERE facility_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, facilityId);
-            int rows = ps.executeUpdate();
-            Mysql.commit(con);
-            return rows > 0;
+            return ps.executeUpdate();
         } catch (SQLException e) {
-            Mysql.rollback(con);
             e.printStackTrace();
-            return false;
-        } finally {
-            Mysql.close(ps, con);
+            return -1;
         }
     }
 

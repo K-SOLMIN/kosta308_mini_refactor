@@ -26,7 +26,12 @@ public class MainServlet extends HttpServlet {
             }
             return;
         }
-        req.getRequestDispatcher("/WEB-INF/views/main.jsp").forward(req, resp);
+        boolean isFetch = "true".equals(req.getHeader("X-Fetch-Request"));
+        if (isFetch) {
+            req.getRequestDispatcher("/WEB-INF/views/fragments/dashboard.jsp").forward(req, resp);
+        } else {
+            req.getRequestDispatcher("/WEB-INF/views/main.jsp").forward(req, resp);
+        }
     }
 
     @Override
