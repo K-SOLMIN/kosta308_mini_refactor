@@ -163,8 +163,7 @@
 
         if (filtered.length === 0) {
             var emptyMsg = "조건에 맞는 시설이 없습니다.";
-            console.log(state.facilities.length);
-            console.log(state.userPermission);
+
             // DB에 데이터 자체가 하나도 없는 경우 (전체 리스트가 0건인 경우)
             if (state.facilities.length === 0) {
                 if (state.userPermission === 'ADMIN') {
