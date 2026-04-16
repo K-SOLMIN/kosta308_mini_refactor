@@ -134,13 +134,11 @@ public class EquipmentServlet extends HttpServlet {
 
     // ── 파라미터 → Equipment 빌드 ────────────────────────────────────
     private Equipment buildEquipment(HttpServletRequest req, boolean withId) {
-        boolean isSet = "true".equals(req.getParameter("isSet"));
         Equipment.Builder b = Equipment.builder()
             .name(req.getParameter("name"))
             .location(req.getParameter("location"))
             .serialNo(req.getParameter("serialNo"))
-            .status(req.getParameter("status"))
-            .isSet(isSet);
+            .status(req.getParameter("status"));
 
         String facId = req.getParameter("facilityId");
         if (facId != null && !facId.isBlank()) b.facilityId(Long.parseLong(facId));

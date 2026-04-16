@@ -17,17 +17,17 @@ public class EquipmentDao {
         String sql =
             "SELECT e.equipment_id, e.facility_id, e.manager_id, " +
             "       u.name AS manager_name, f.name AS facility_name, " +
-            "       e.name, e.location, e.serial_no, e.status, e.is_set, e.check_delete, " +
-            "       COUNT(ed.equipment_detail_id) AS detail_count, " +
-            "       COALESCE(SUM(ed.status = '정상'), 0) AS normal_count, " +
-            "       COALESCE(SUM(ed.status != '정상'), 0) AS issue_count " +
+            "       e.name, e.location, e.serial_no, e.status, e.check_delete, " +
+            "       COUNT(ed.equipment_detail_id)              AS detail_count, " +
+            "       COALESCE(SUM(ed.status = '정상'), 0)       AS normal_count, " +
+            "       COALESCE(SUM(ed.status != '정상'), 0)      AS issue_count " +
             "FROM EQUIPMENT e " +
-            "LEFT JOIN USER u              ON e.manager_id  = u.user_id " +
-            "LEFT JOIN FACILITY f          ON e.facility_id = f.facility_id " +
-            "LEFT JOIN EQUIPMENTDETAIL ed  ON e.equipment_id = ed.equipment_id AND ed.check_delete = 0 " +
+            "LEFT JOIN USER u             ON e.manager_id  = u.user_id " +
+            "LEFT JOIN FACILITY f         ON e.facility_id = f.facility_id " +
+            "LEFT JOIN EQUIPMENTDETAIL ed ON e.equipment_id = ed.equipment_id AND ed.check_delete = 0 " +
             "WHERE e.check_delete = 0 " +
             "GROUP BY e.equipment_id, e.facility_id, e.manager_id, " +
-            "         u.name, f.name, e.name, e.location, e.serial_no, e.status, e.is_set, e.check_delete " +
+            "         u.name, f.name, e.name, e.location, e.serial_no, e.status, e.check_delete " +
             "ORDER BY e.equipment_id";
 
         List<Equipment> list = new ArrayList<>();
@@ -49,7 +49,6 @@ public class EquipmentDao {
                     .location(rs.getString("location"))
                     .serialNo(rs.getString("serial_no"))
                     .status(rs.getString("status"))
-                    .isSet(rs.getInt("is_set") == 1)
                     .checkDelete(false)
                     .detailCount(rs.getInt("detail_count"))
                     .normalCount(rs.getInt("normal_count"))
@@ -67,8 +66,8 @@ public class EquipmentDao {
     public long saveAndGetId(Connection conn, Equipment eq) {
         String sql =
             "INSERT INTO EQUIPMENT " +
-            "(facility_id, manager_id, name, location, serial_no, status, is_set, check_delete) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, 0)";
+            "(facility_id, manager_id, name, location, serial_no, status, check_delete) " +
+            "VALUES (?, ?, ?, ?, ?, ?, 0)";
 
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             setNullableLong(ps, 1, eq.getFacilityId());
@@ -77,7 +76,6 @@ public class EquipmentDao {
             ps.setString(4, eq.getLocation());
             ps.setString(5, eq.getSerialNo());
             ps.setString(6, eq.getStatus());
-            ps.setInt(7, eq.isSet() ? 1 : 0);
             ps.executeUpdate();
 
             try (ResultSet keys = ps.getGeneratedKeys()) {
@@ -94,7 +92,7 @@ public class EquipmentDao {
         String sql =
             "UPDATE EQUIPMENT SET " +
             "facility_id = ?, manager_id = ?, name = ?, " +
-            "location = ?, serial_no = ?, status = ?, is_set = ? " +
+            "location = ?, serial_no = ?, status = ? " +
             "WHERE equipment_id = ?";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -104,8 +102,7 @@ public class EquipmentDao {
             ps.setString(4, eq.getLocation());
             ps.setString(5, eq.getSerialNo());
             ps.setString(6, eq.getStatus());
-            ps.setInt(7, eq.isSet() ? 1 : 0);
-            ps.setLong(8, eq.getEquipmentId());
+            ps.setLong(7, eq.getEquipmentId());
             return ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();

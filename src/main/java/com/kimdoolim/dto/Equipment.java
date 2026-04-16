@@ -11,11 +11,10 @@ public class Equipment {
     private String  location;
     private String  serialNo;
     private String  status;       // 정상 | 수리 | 점검
-    private boolean isSet;        // 세트 여부
     private boolean checkDelete;
 
-    // 세트용 집계 (LEFT JOIN EQUIPMENTDETAIL)
-    private int detailCount;  // 총 낱개 수
+    // DB GROUP BY 집계값 (EQUIPMENTDETAIL COUNT/SUM)
+    private int detailCount;  // 총 낱개 수 (0이면 단품으로 간주)
     private int normalCount;  // 정상 낱개 수
     private int issueCount;   // 이슈(수리·점검·분실) 낱개 수
 
@@ -31,7 +30,6 @@ public class Equipment {
         private String  location;
         private String  serialNo;
         private String  status;
-        private boolean isSet;
         private boolean checkDelete;
         private int     detailCount;
         private int     normalCount;
@@ -46,7 +44,6 @@ public class Equipment {
         public Builder location(String v)     { this.location = v;     return this; }
         public Builder serialNo(String v)     { this.serialNo = v;     return this; }
         public Builder status(String v)       { this.status = v;       return this; }
-        public Builder isSet(boolean v)       { this.isSet = v;        return this; }
         public Builder checkDelete(boolean v) { this.checkDelete = v;  return this; }
         public Builder detailCount(int v)     { this.detailCount = v;  return this; }
         public Builder normalCount(int v)     { this.normalCount = v;  return this; }
@@ -63,7 +60,6 @@ public class Equipment {
             e.location     = location;
             e.serialNo     = serialNo;
             e.status       = status;
-            e.isSet        = isSet;
             e.checkDelete  = checkDelete;
             e.detailCount  = detailCount;
             e.normalCount  = normalCount;
@@ -81,14 +77,16 @@ public class Equipment {
     public String  getLocation()     { return location; }
     public String  getSerialNo()     { return serialNo; }
     public String  getStatus()       { return status; }
-    public boolean isSet()           { return isSet; }
     public boolean isCheckDelete()   { return checkDelete; }
     public int     getDetailCount()  { return detailCount; }
     public int     getNormalCount()  { return normalCount; }
     public int     getIssueCount()   { return issueCount; }
 
+    /** EQUIPMENTDETAIL row가 1개라도 있으면 세트, 없으면 단품 */
+    public boolean isSet() { return detailCount > 0; }
+
     @Override
     public String toString() {
-        return "Equipment{id=" + equipmentId + ", name='" + name + "', isSet=" + isSet + ", status='" + status + "'}";
+        return "Equipment{id=" + equipmentId + ", name='" + name + "', isSet=" + isSet() + ", status='" + status + "'}";
     }
 }
