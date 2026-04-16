@@ -855,7 +855,8 @@ body {
 }
 
 .btn-tbl-edit,
-.btn-tbl-del {
+.btn-tbl-del,
+.btn-tbl-detail {
     font-size: 11px;
     padding: 3px 10px;
     border-radius: 3px;
@@ -878,6 +879,14 @@ body {
     color: #c0392b;
 }
 .btn-tbl-del:hover { background: #c0392b; color: #fff; }
+
+.btn-tbl-detail {
+    border: 1px solid #6741d9;
+    background: #fff;
+    color: #6741d9;
+    margin-left: 4px;
+}
+.btn-tbl-detail:hover { background: #6741d9; color: #fff; }
 
 /* ── 삭제 인라인 확인 ── */
 .fm-del-msg {

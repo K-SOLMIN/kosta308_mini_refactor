@@ -156,7 +156,11 @@
                 </tr>
             </thead>
             <tbody id="fmTableBody">
-                <tr><td colspan="<%= colCount %>" class="dash-empty">데이터를 불러오는 중...</td></tr>
+                <tr><td colspan="<%= colCount %>" class="dash-empty">
+                    <% if (facilities.isEmpty()) { %>
+                        <% if (isAdmin) { %>등록된 시설이 없습니다.<% } else { %>관리 중인 시설이 없습니다.<% } %>
+                    <% } else { %>데이터를 불러오는 중...<% } %>
+                </td></tr>
             </tbody>
         </table>
     </div>

@@ -12,34 +12,48 @@ public class EquipmentDao {
     private EquipmentDao() {}
     public static EquipmentDao getInstance() { return instance; }
 
+    // ── 전체 조회 (낱개 집계 포함) ──────────────────────────────────
     public List<Equipment> findAll(Connection conn) {
         String sql =
             "SELECT e.equipment_id, e.facility_id, e.manager_id, " +
             "       u.name AS manager_name, f.name AS facility_name, " +
-            "       e.name, e.location, e.serial_no, e.status, e.check_delete " +
+            "       e.name, e.location, e.serial_no, e.status, e.is_set, e.check_delete, " +
+            "       COUNT(ed.equipment_detail_id) AS detail_count, " +
+            "       COALESCE(SUM(ed.status = '정상'), 0) AS normal_count, " +
+            "       COALESCE(SUM(ed.status != '정상'), 0) AS issue_count " +
             "FROM EQUIPMENT e " +
-            "LEFT JOIN USER u     ON e.manager_id  = u.user_id " +
-            "LEFT JOIN FACILITY f ON e.facility_id = f.facility_id " +
-            "WHERE e.check_delete = 'false' " +
+            "LEFT JOIN USER u              ON e.manager_id  = u.user_id " +
+            "LEFT JOIN FACILITY f          ON e.facility_id = f.facility_id " +
+            "LEFT JOIN EQUIPMENTDETAIL ed  ON e.equipment_id = ed.equipment_id AND ed.check_delete = 0 " +
+            "WHERE e.check_delete = 0 " +
+            "GROUP BY e.equipment_id, e.facility_id, e.manager_id, " +
+            "         u.name, f.name, e.name, e.location, e.serial_no, e.status, e.is_set, e.check_delete " +
             "ORDER BY e.equipment_id";
 
         List<Equipment> list = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                long facId  = rs.getLong("facility_id");
-                int  mgrId  = rs.getInt("manager_id");
+                long    facIdRaw = rs.getLong("facility_id");
+                boolean facNull  = rs.wasNull();
+                int     mgrIdRaw = rs.getInt("manager_id");
+                boolean mgrNull  = rs.wasNull();
+
                 list.add(Equipment.builder()
                     .equipmentId(rs.getLong("equipment_id"))
-                    .facilityId(rs.wasNull() ? null : facId)
-                    .managerId(rs.wasNull()  ? null : mgrId)
+                    .facilityId(facNull ? null : facIdRaw)
+                    .managerId(mgrNull  ? null : mgrIdRaw)
                     .managerName(rs.getString("manager_name"))
                     .facilityName(rs.getString("facility_name"))
                     .name(rs.getString("name"))
                     .location(rs.getString("location"))
                     .serialNo(rs.getString("serial_no"))
                     .status(rs.getString("status"))
-                    .checkDelete("false")
+                    .isSet(rs.getInt("is_set") == 1)
+                    .checkDelete(false)
+                    .detailCount(rs.getInt("detail_count"))
+                    .normalCount(rs.getInt("normal_count"))
+                    .issueCount(rs.getInt("issue_count"))
                     .build());
             }
         } catch (SQLException e) {
@@ -49,31 +63,38 @@ public class EquipmentDao {
         return list;
     }
 
-    public int save(Connection conn, Equipment eq) {
+    // ── 등록 (생성된 PK 반환) ────────────────────────────────────────
+    public long saveAndGetId(Connection conn, Equipment eq) {
         String sql =
             "INSERT INTO EQUIPMENT " +
-            "(facility_id, manager_id, name, location, serial_no, status, check_delete) " +
-            "VALUES (?, ?, ?, ?, ?, ?, 'false')";
+            "(facility_id, manager_id, name, location, serial_no, status, is_set, check_delete) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, 0)";
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            setNullableLong(ps,    1, eq.getFacilityId());
-            setNullableInt(ps,     2, eq.getManagerId());
+        try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            setNullableLong(ps, 1, eq.getFacilityId());
+            setNullableInt(ps,  2, eq.getManagerId());
             ps.setString(3, eq.getName());
             ps.setString(4, eq.getLocation());
             ps.setString(5, eq.getSerialNo());
             ps.setString(6, eq.getStatus());
-            return ps.executeUpdate();
+            ps.setInt(7, eq.isSet() ? 1 : 0);
+            ps.executeUpdate();
+
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) return keys.getLong(1);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            return -1;
         }
+        return -1;
     }
 
+    // ── 수정 ────────────────────────────────────────────────────────
     public int update(Connection conn, Equipment eq) {
         String sql =
             "UPDATE EQUIPMENT SET " +
             "facility_id = ?, manager_id = ?, name = ?, " +
-            "location = ?, serial_no = ?, status = ? " +
+            "location = ?, serial_no = ?, status = ?, is_set = ? " +
             "WHERE equipment_id = ?";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -83,7 +104,8 @@ public class EquipmentDao {
             ps.setString(4, eq.getLocation());
             ps.setString(5, eq.getSerialNo());
             ps.setString(6, eq.getStatus());
-            ps.setLong(7, eq.getEquipmentId());
+            ps.setInt(7, eq.isSet() ? 1 : 0);
+            ps.setLong(8, eq.getEquipmentId());
             return ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -91,8 +113,9 @@ public class EquipmentDao {
         }
     }
 
+    // ── 소프트 삭제 ──────────────────────────────────────────────────
     public int softDelete(Connection conn, long equipmentId) {
-        String sql = "UPDATE EQUIPMENT SET check_delete = 'true', deletedate = NOW() WHERE equipment_id = ?";
+        String sql = "UPDATE EQUIPMENT SET check_delete = 1, deletedate = NOW() WHERE equipment_id = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, equipmentId);
             return ps.executeUpdate();

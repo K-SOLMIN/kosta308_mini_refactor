@@ -3,15 +3,14 @@
 <%@ page import="com.kimdoolim.dto.Equipment" %>
 <%@ page import="java.util.List" %>
 <%
-    User    loginUser  = (User) session.getAttribute("loginUser");
-    boolean isAdmin    = Boolean.TRUE.equals(request.getAttribute("isAdmin"));
+    boolean isAdmin = Boolean.TRUE.equals(request.getAttribute("isAdmin"));
     @SuppressWarnings("unchecked")
     List<Equipment> equipments = (List<Equipment>) request.getAttribute("equipments");
     if (equipments == null) equipments = java.util.Collections.emptyList();
     @SuppressWarnings("unchecked")
     List<User> managers = (List<User>) request.getAttribute("managers");
     if (managers == null) managers = java.util.Collections.emptyList();
-    int colCount = isAdmin ? 8 : 7;
+    int colCount = isAdmin ? 9 : 8;
 %>
 
 <!-- ── SPA 데이터 브릿지 ── -->
@@ -37,7 +36,11 @@
             "managerId":<%= eq.getManagerId() != null ? eq.getManagerId() : "null" %>,
             "managerName":"<%= mgrName %>",
             "serialNo":"<%= serialNo %>",
-            "status":"<%= eq.getStatus() %>"
+            "status":"<%= eq.getStatus() %>",
+            "isSet":<%= eq.isSet() %>,
+            "detailCount":<%= eq.getDetailCount() %>,
+            "normalCount":<%= eq.getNormalCount() %>,
+            "issueCount":<%= eq.getIssueCount() %>
         }<%= i < equipments.size() - 1 ? "," : "" %><%
             }
         %>]
@@ -62,7 +65,7 @@
 <div class="page-header-row">
     <div>
         <div class="page-title">비품 관리</div>
-        <div class="page-subtitle">등록된 비품 현황을 한눈에 조회하고 관리합니다.</div>
+        <div class="page-subtitle">비품 세트·단품 현황을 조회하고, 낱개 단위로 관리합니다.</div>
     </div>
     <% if (isAdmin) { %>
     <button class="btn-primary" id="btnAddEquipment">+ 비품 등록</button>
@@ -72,49 +75,50 @@
 <!-- ══════════════════════════════════════════
      주의 필요 배너
 ══════════════════════════════════════════ -->
-<div class="fm-alert-banner" id="emAlertBanner">
+<div class="fm-alert-banner" id="emAlertBanner" style="display:none;">
     <span class="fm-alert-icon">▲</span>
     <span class="fm-alert-label">주의 필요</span>
     <div class="fm-alert-chips" id="emAlertChips"></div>
 </div>
 
 <!-- ══════════════════════════════════════════
-     요약 통계 카드 4개
+     요약 통계 카드
 ══════════════════════════════════════════ -->
 <div class="stat-row">
     <div class="stat-card stat-blue">
         <div class="stat-icon-wrap blue">▦</div>
         <div class="stat-body">
             <div class="stat-num" id="emStatTotal">-</div>
-            <div class="stat-lbl">전체 비품</div>
+            <div class="stat-lbl">전체 비품 종류</div>
         </div>
     </div>
     <div class="stat-card stat-green">
-        <div class="stat-icon-wrap green">✔</div>
+        <div class="stat-icon-wrap green">▣</div>
         <div class="stat-body">
-            <div class="stat-num" id="emStatNormal">-</div>
-            <div class="stat-lbl">정상</div>
-            <div class="stat-sub" id="emStatNormalPct"></div>
+            <div class="stat-num" id="emStatSet">-</div>
+            <div class="stat-lbl">세트 비품</div>
+            <div class="stat-sub" id="emStatSetSub"></div>
         </div>
     </div>
     <div class="stat-card stat-gold">
-        <div class="stat-icon-wrap gold">⚙</div>
+        <div class="stat-icon-wrap gold">◻</div>
         <div class="stat-body">
-            <div class="stat-num" id="emStatIssue">-</div>
-            <div class="stat-lbl">수리·점검 중</div>
+            <div class="stat-num" id="emStatSingle">-</div>
+            <div class="stat-lbl">단품 비품</div>
         </div>
     </div>
     <div class="stat-card stat-red">
         <div class="stat-icon-wrap red">!</div>
         <div class="stat-body">
-            <div class="stat-num" id="emStatNoMgr">-</div>
-            <div class="stat-lbl">담당자 없음</div>
+            <div class="stat-num" id="emStatIssue">-</div>
+            <div class="stat-lbl">이슈 비품</div>
+            <div class="stat-sub" id="emStatIssueSub"></div>
         </div>
     </div>
 </div>
 
 <!-- ══════════════════════════════════════════
-     비품 상태 분포 바
+     상태 분포 바
 ══════════════════════════════════════════ -->
 <div class="fm-status-bar-wrap">
     <div class="fm-bar-header">
@@ -131,9 +135,10 @@
 <div class="fm-controls">
     <div class="fm-filter-tabs">
         <button class="fm-filter-tab active" data-filter="all">전체</button>
+        <button class="fm-filter-tab" data-filter="set">세트</button>
+        <button class="fm-filter-tab" data-filter="single">단품</button>
         <button class="fm-filter-tab" data-filter="정상">정상</button>
-        <button class="fm-filter-tab" data-filter="수리">수리</button>
-        <button class="fm-filter-tab" data-filter="점검">점검</button>
+        <button class="fm-filter-tab" data-filter="issue">이슈</button>
     </div>
     <input type="text" id="emSearch" class="fm-search-input" placeholder="비품명, 위치, 시리얼번호 검색...">
     <span class="fm-result-count" id="emResultCount"></span>
@@ -148,17 +153,22 @@
             <thead>
                 <tr>
                     <th class="col-idx">#</th>
+                    <th style="width:54px;">유형</th>
                     <th>비품명</th>
                     <th>보관 위치</th>
                     <th>담당 시설</th>
-                    <th>시리얼번호</th>
+                    <th style="width:150px;">수량 / 시리얼</th>
                     <th>담당자</th>
                     <th class="col-status">상태</th>
                     <% if (isAdmin) { %><th class="col-manage">관리</th><% } %>
                 </tr>
             </thead>
             <tbody id="emTableBody">
-                <tr><td colspan="<%= colCount %>" class="dash-empty">데이터를 불러오는 중...</td></tr>
+                <tr><td colspan="<%= colCount %>" class="dash-empty">
+                    <% if (equipments.isEmpty()) { %>
+                        <% if (isAdmin) { %>등록된 비품이 없습니다.<% } else { %>관리 가능한 비품이 없습니다.<% } %>
+                    <% } else { %>데이터를 불러오는 중...<% } %>
+                </td></tr>
             </tbody>
         </table>
     </div>
@@ -172,14 +182,21 @@
 <!-- ── 비품 등록·수정 모달 ── -->
 <div class="modal-overlay" id="equipmentModal">
     <div class="modal">
-
         <div class="modal-header">
             <span class="modal-title" id="emModalTitle">비품 등록</span>
             <button class="modal-close" id="emModalClose" type="button">✕</button>
         </div>
-
         <div class="modal-body">
             <input type="hidden" id="emEquipmentId">
+
+            <!-- 세트 여부 토글 -->
+            <div class="form-group" style="margin-bottom:16px;">
+                <label class="form-label">비품 유형</label>
+                <div class="form-radio-group">
+                    <label class="form-radio"><input type="radio" name="emIsSet" value="false" checked> 단품 (개별 1개)</label>
+                    <label class="form-radio"><input type="radio" name="emIsSet" value="true"> 세트 (낱개 여러 개)</label>
+                </div>
+            </div>
 
             <div class="form-row">
                 <div class="form-group">
@@ -194,39 +211,109 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">시리얼번호</label>
+                    <label class="form-label" id="emSerialLabel">시리얼 번호</label>
                     <input type="text" id="emSerialNo" class="form-input" placeholder="예: NB-2024-001" maxlength="100">
                 </div>
+                <!-- 세트 등록 시에만 표시 -->
+                <div class="form-group" id="emQuantityGroup" style="display:none;">
+                    <label class="form-label">낱개 수량 <span class="form-required">*</span></label>
+                    <div class="form-inline">
+                        <input type="number" id="emQuantity" class="form-input" placeholder="예: 5" min="1" max="999">
+                        <span class="form-unit">개</span>
+                    </div>
+                    <div style="font-size:11px;color:#8a9bab;margin-top:4px;">시리얼 접두사-001 ~ 접두사-N 자동 생성</div>
+                </div>
+            </div>
+
+            <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">담당자</label>
                     <select id="emManager" class="form-select">
                         <option value="">담당자 없음</option>
                     </select>
                 </div>
-            </div>
-
-            <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">담당 시설 ID</label>
                     <input type="number" id="emFacilityId" class="form-input" placeholder="시설 ID (선택)" min="1">
                 </div>
-                <div class="form-group">
-                    <label class="form-label">상태 <span class="form-required">*</span></label>
-                    <div class="form-radio-group">
-                        <label class="form-radio"><input type="radio" name="emStatus" value="정상" checked> 정상</label>
-                        <label class="form-radio"><input type="radio" name="emStatus" value="수리"> 수리</label>
-                        <label class="form-radio"><input type="radio" name="emStatus" value="점검"> 점검</label>
-                    </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">상태 <span class="form-required">*</span></label>
+                <div class="form-radio-group">
+                    <label class="form-radio"><input type="radio" name="emStatus" value="정상" checked> 정상</label>
+                    <label class="form-radio"><input type="radio" name="emStatus" value="수리"> 수리</label>
+                    <label class="form-radio"><input type="radio" name="emStatus" value="점검"> 점검</label>
                 </div>
             </div>
         </div>
-
         <div class="modal-footer">
             <button class="btn-secondary" id="emModalCancel" type="button">취소</button>
             <button class="btn-primary"   id="emModalSubmit" type="button">등록</button>
         </div>
+    </div>
+</div>
 
+<!-- ── 낱개 상세 모달 ── -->
+<div class="modal-overlay" id="detailModal">
+    <div class="modal" style="width:600px;max-width:96vw;">
+        <div class="modal-header">
+            <span class="modal-title" id="detailModalTitle">낱개 목록</span>
+            <button class="modal-close" id="detailModalClose" type="button">✕</button>
+        </div>
+        <div class="modal-body" style="padding-bottom:8px;">
+            <!-- 낱개 상태 요약 -->
+            <div id="detailStatRow" style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;"></div>
+            <!-- 낱개 추가 입력 -->
+            <div id="detailAddRow" style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+                <input type="text" id="detailNewSerial" class="form-input" placeholder="추가할 시리얼번호" style="flex:1;margin:0;">
+                <button class="btn-primary" id="detailAddBtn" type="button" style="white-space:nowrap;">+ 낱개 추가</button>
+            </div>
+            <!-- 낱개 목록 테이블 -->
+            <div style="max-height:360px;overflow-y:auto;">
+                <table class="dash-table" id="detailTable">
+                    <thead>
+                        <tr>
+                            <th class="col-idx">#</th>
+                            <th>시리얼 번호</th>
+                            <th class="col-status">상태</th>
+                            <th class="col-manage">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detailTableBody">
+                        <tr><td colspan="4" class="dash-empty">불러오는 중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" id="detailModalClose2" type="button">닫기</button>
+        </div>
     </div>
 </div>
 
 <% } %>
+
+<style>
+/* ── 비품 전용 추가 스타일 ── */
+.em-type-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+.em-type-set    { background:#e8f0fe; color:#3b5bdb; }
+.em-type-single { background:#f0fdf4; color:#2f9e44; }
+
+.em-qty-cell { display:flex; flex-direction:column; gap:3px; }
+.em-qty-bar-wrap { width:100%; background:#e9ecef; border-radius:4px; height:6px; overflow:hidden; }
+.em-qty-bar      { height:6px; background:#40c057; border-radius:4px; transition:width .3s; }
+.em-qty-bar.has-issue { background:#fd7e14; }
+.em-qty-text { font-size:12px; color:#495057; }
+.em-qty-issue { font-size:11px; color:#e03131; }
+
+.detail-stat-chip { display:inline-flex; align-items:center; gap:5px; padding:4px 10px;
+    border-radius:12px; font-size:12px; font-weight:600; }
+.detail-stat-chip.normal    { background:#d3f9d8; color:#2f9e44; }
+.detail-stat-chip.repair    { background:#fff3cd; color:#e67700; }
+.detail-stat-chip.inspect   { background:#e8f4fd; color:#1971c2; }
+.detail-stat-chip.lost      { background:#ffe8e8; color:#c92a2a; }
+
+.detail-status-sel { font-size:12px; padding:3px 6px; border:1px solid #dee2e6; border-radius:4px;
+    background:#fff; cursor:pointer; }
+</style>

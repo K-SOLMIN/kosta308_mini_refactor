@@ -1,6 +1,7 @@
 package com.kimdoolim.equipment.controller;
 
 import com.kimdoolim.dto.Equipment;
+import com.kimdoolim.dto.EquipmentDetail;
 import com.kimdoolim.dto.Permission;
 import com.kimdoolim.dto.User;
 import com.kimdoolim.equipment.service.EquipmentService;
@@ -27,33 +28,37 @@ public class EquipmentServlet extends HttpServlet {
         User loginUser      = (session != null) ? (User) session.getAttribute("loginUser") : null;
         boolean isFetch     = "true".equals(req.getHeader("X-Fetch-Request"));
 
-        // ── 미인증 ──
         if (loginUser == null) {
-            if (isFetch) sendJson(resp, HttpServletResponse.SC_UNAUTHORIZED, "{\"error\":\"unauthorized\"}");
+            if (isFetch) sendJson(resp, 401, "{\"error\":\"unauthorized\"}");
             else         resp.sendRedirect(req.getContextPath() + "/index.jsp");
             return;
         }
-
-        // ── 일반 사용자 접근 불가 ──
         if (loginUser.getPermission() == Permission.USER) {
-            if (isFetch) sendJson(resp, HttpServletResponse.SC_FORBIDDEN, "{\"error\":\"forbidden\"}");
+            if (isFetch) sendJson(resp, 403, "{\"error\":\"forbidden\"}");
             else         resp.sendRedirect(req.getContextPath() + "/main.do");
             return;
         }
 
-        // ── 직접 URL 접근 → 메인으로 리다이렉트 ──
+        String action = req.getParameter("action");
+
+        // ── 낱개 목록 AJAX 요청 ──────────────────────────────────────
+        if ("details".equals(action)) {
+            long equipmentId = Long.parseLong(req.getParameter("equipmentId"));
+            List<EquipmentDetail> details = equipmentService.getDetails(equipmentId);
+            sendJson(resp, 200, toDetailJson(details));
+            return;
+        }
+
+        // ── 화면 요청 ────────────────────────────────────────────────
         if (!isFetch) {
             resp.sendRedirect(req.getContextPath() + "/main.do");
             return;
         }
 
-        // ── 데이터 조회 ──
         List<Equipment> equipments = equipmentService.getAllEquipments();
         List<User>      managers   = equipmentService.getAvailableManagers();
 
         Permission perm = loginUser.getPermission();
-
-        // 중간관리자는 본인이 담당자인 비품만 조회
         if (perm == Permission.MIDDLEADMIN) {
             final Integer userId = loginUser.getUserId();
             equipments = equipments.stream()
@@ -61,15 +66,15 @@ public class EquipmentServlet extends HttpServlet {
                 .toList();
 
             if (equipments.isEmpty()) {
-                sendJson(resp, HttpServletResponse.SC_FORBIDDEN, "{\"error\":\"no_managed_equipment\"}");
+                sendJson(resp, 403, "{\"error\":\"no_managed_equipment\"}");
                 return;
             }
         }
 
-        req.setAttribute("isAdmin",         perm == Permission.ADMIN);
-        req.setAttribute("userPermission",  perm.name().trim());
-        req.setAttribute("equipments",      equipments);
-        req.setAttribute("managers",        managers);
+        req.setAttribute("isAdmin",        perm == Permission.ADMIN);
+        req.setAttribute("userPermission", perm.name().trim());
+        req.setAttribute("equipments",     equipments);
+        req.setAttribute("managers",       managers);
         req.getRequestDispatcher("/WEB-INF/views/fragments/equipmentmanageviewresponse.jsp")
            .forward(req, resp);
     }
@@ -83,57 +88,91 @@ public class EquipmentServlet extends HttpServlet {
         HttpSession session = req.getSession(false);
         User loginUser      = (session != null) ? (User) session.getAttribute("loginUser") : null;
 
-        if (loginUser == null) {
-            sendJson(resp, HttpServletResponse.SC_UNAUTHORIZED, "{\"error\":\"unauthorized\"}");
-            return;
-        }
-        if (loginUser.getPermission() == Permission.USER) {
-            sendJson(resp, HttpServletResponse.SC_FORBIDDEN, "{\"error\":\"forbidden\"}");
-            return;
-        }
+        if (loginUser == null) { sendJson(resp, 401, "{\"error\":\"unauthorized\"}"); return; }
+        if (loginUser.getPermission() == Permission.USER) { sendJson(resp, 403, "{\"error\":\"forbidden\"}"); return; }
 
         String action = req.getParameter("action");
         boolean ok;
 
         switch (action == null ? "" : action) {
-            case "save":
-                ok = equipmentService.registerEquipment(buildEquipment(req, false));
+            case "save": {
+                Equipment eq = buildEquipment(req, false);
+                if (eq.isSet()) {
+                    int qty = parseInt(req.getParameter("quantity"), 1);
+                    ok = equipmentService.registerEquipmentSet(eq, qty);
+                } else {
+                    ok = equipmentService.registerEquipment(eq);
+                }
                 break;
+            }
             case "update":
                 ok = equipmentService.modifyEquipment(buildEquipment(req, true));
                 break;
             case "delete":
-                long equipmentId = Long.parseLong(req.getParameter("equipmentId"));
-                ok = equipmentService.removeEquipment(equipmentId);
+                ok = equipmentService.removeEquipment(Long.parseLong(req.getParameter("equipmentId")));
+                break;
+            case "updateDetailStatus":
+                ok = equipmentService.updateDetailStatus(
+                    Long.parseLong(req.getParameter("equipmentDetailId")),
+                    req.getParameter("status"));
+                break;
+            case "addDetail":
+                ok = equipmentService.addDetail(
+                    Long.parseLong(req.getParameter("equipmentId")),
+                    req.getParameter("serialNo"));
+                break;
+            case "deleteDetail":
+                ok = equipmentService.removeDetail(Long.parseLong(req.getParameter("equipmentDetailId")));
                 break;
             default:
-                sendJson(resp, HttpServletResponse.SC_BAD_REQUEST, "{\"error\":\"unknown action\"}");
+                sendJson(resp, 400, "{\"error\":\"unknown action\"}");
                 return;
         }
 
-        sendJson(resp, HttpServletResponse.SC_OK, ok ? "{\"success\":true}" : "{\"success\":false}");
+        sendJson(resp, 200, ok ? "{\"success\":true}" : "{\"success\":false}");
     }
 
-    // ── 요청 파라미터 → Equipment 빌드 ──
+    // ── 파라미터 → Equipment 빌드 ────────────────────────────────────
     private Equipment buildEquipment(HttpServletRequest req, boolean withId) {
+        boolean isSet = "true".equals(req.getParameter("isSet"));
         Equipment.Builder b = Equipment.builder()
             .name(req.getParameter("name"))
             .location(req.getParameter("location"))
             .serialNo(req.getParameter("serialNo"))
-            .status(req.getParameter("status"));
+            .status(req.getParameter("status"))
+            .isSet(isSet);
 
         String facId = req.getParameter("facilityId");
-        if (facId != null && !facId.isBlank()) {
-            b.facilityId(Long.parseLong(facId));
-        }
+        if (facId != null && !facId.isBlank()) b.facilityId(Long.parseLong(facId));
+
         String mgrId = req.getParameter("managerId");
-        if (mgrId != null && !mgrId.isBlank()) {
-            b.managerId(Integer.parseInt(mgrId));
-        }
-        if (withId) {
-            b.equipmentId(Long.parseLong(req.getParameter("equipmentId")));
-        }
+        if (mgrId != null && !mgrId.isBlank()) b.managerId(Integer.parseInt(mgrId));
+
+        if (withId) b.equipmentId(Long.parseLong(req.getParameter("equipmentId")));
         return b.build();
+    }
+
+    // ── EquipmentDetail 리스트 → JSON ────────────────────────────────
+    private String toDetailJson(List<EquipmentDetail> details) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < details.size(); i++) {
+            EquipmentDetail d = details.get(i);
+            String serial = d.getSerialNo() != null ? d.getSerialNo().replace("\"", "\\\"") : "";
+            sb.append("{")
+              .append("\"id\":").append(d.getEquipmentDetailId()).append(",")
+              .append("\"equipmentId\":").append(d.getEquipmentId()).append(",")
+              .append("\"serialNo\":\"").append(serial).append("\",")
+              .append("\"status\":\"").append(d.getStatus()).append("\"")
+              .append("}");
+            if (i < details.size() - 1) sb.append(",");
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    private int parseInt(String val, int def) {
+        try { return val != null ? Integer.parseInt(val) : def; }
+        catch (NumberFormatException e) { return def; }
     }
 
     private void sendJson(HttpServletResponse resp, int status, String body) throws IOException {
