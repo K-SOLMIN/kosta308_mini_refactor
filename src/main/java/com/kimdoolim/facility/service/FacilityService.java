@@ -2,6 +2,7 @@ package com.kimdoolim.facility.service;
 
 import com.kimdoolim.auth.dao.LoginDao;
 import com.kimdoolim.dto.Facility;
+import com.kimdoolim.dto.Permission;
 import com.kimdoolim.dto.User;
 import com.kimdoolim.facility.dao.FacilityDao;
 
@@ -58,9 +59,21 @@ public class FacilityService {
         }
     }
 
-    public boolean modifyFacility(Facility facility) {
+    public boolean modifyFacility(Facility facility, User loginUser) {
         Connection conn = getConnection();
         try {
+            // ── 권한 검증 ──────────────────────────────────────────────
+            Facility existing = facilityDao.findById(conn, facility.getFacilityId());
+            if (existing == null) return false;
+
+            // 관리자가 아니면서, 본인이 담당하는 시설이 아닌 경우 거부
+            if (loginUser.getPermission() != Permission.ADMIN) {
+                if (existing.getManagerId() == null || !existing.getManagerId().equals(loginUser.getUserId())) {
+                    return false;
+                }
+            }
+            // ────────────────────────────────────────────────────────────
+
             int result = facilityDao.update(conn, facility);
             if (result > 0) {
                 commit(conn);
@@ -76,9 +89,21 @@ public class FacilityService {
         }
     }
 
-    public boolean removeFacility(long facilityId) {
+    public boolean removeFacility(long facilityId, User loginUser) {
         Connection conn = getConnection();
         try {
+            // ── 권한 검증 ──────────────────────────────────────────────
+            Facility existing = facilityDao.findById(conn, facilityId);
+            if (existing == null) return false;
+
+            // 관리자가 아니면서, 본인이 담당하는 시설이 아닌 경우 거부
+            if (loginUser.getPermission() != Permission.ADMIN) {
+                if (existing.getManagerId() == null || !existing.getManagerId().equals(loginUser.getUserId())) {
+                    return false;
+                }
+            }
+            // ────────────────────────────────────────────────────────────
+
             int result = facilityDao.softDelete(conn, facilityId);
             if (result > 0) {
                 commit(conn);

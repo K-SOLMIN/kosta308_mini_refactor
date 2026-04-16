@@ -114,11 +114,11 @@ public class FacilityServlet extends HttpServlet {
                 ok = facilityService.registerFacility(buildFacility(req, false));
                 break;
             case "update":
-                ok = facilityService.modifyFacility(buildFacility(req, true));
+                ok = facilityService.modifyFacility(buildFacility(req, true), loginUser);
                 break;
             case "delete":
                 long facilityId = Long.parseLong(req.getParameter("facilityId"));
-                ok = facilityService.removeFacility(facilityId);
+                ok = facilityService.removeFacility(facilityId, loginUser);
                 break;
             default:
                 sendJson(resp, HttpServletResponse.SC_BAD_REQUEST, "{\"error\":\"unknown action\"}");

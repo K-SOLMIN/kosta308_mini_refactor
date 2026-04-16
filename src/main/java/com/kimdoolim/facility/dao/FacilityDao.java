@@ -11,6 +11,40 @@ public class FacilityDao {
     private FacilityDao() {}
     public static FacilityDao getInstance() { return instance; }
 
+    public Facility findById(Connection conn, long facilityId) {
+        String sql =
+            "SELECT f.facility_id, f.manager_id, u.name AS manager_name, " +
+            "       f.location, f.name, f.max_capacity, " +
+            "       f.max_reservation_unit, f.max_reservation_value, f.status " +
+            "FROM FACILITY f " +
+            "LEFT JOIN USER u ON f.manager_id = u.user_id " +
+            "WHERE f.facility_id = ? AND f.is_delete = 0";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, facilityId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    int mgrId = rs.getInt("manager_id");
+                    return Facility.builder()
+                        .facilityId(rs.getLong("facility_id"))
+                        .managerId(rs.wasNull() ? null : mgrId)
+                        .managerName(rs.getString("manager_name"))
+                        .location(rs.getString("location"))
+                        .name(rs.getString("name"))
+                        .maxCapacity(rs.getInt("max_capacity"))
+                        .maxReservationUnit(rs.getString("max_reservation_unit"))
+                        .maxReservationValue(rs.getInt("max_reservation_value"))
+                        .isDelete(false)
+                        .status(rs.getString("status"))
+                        .build();
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public List<Facility> findAll(Connection conn) {
         String sql =
             "SELECT f.facility_id, f.manager_id, u.name AS manager_name, " +
