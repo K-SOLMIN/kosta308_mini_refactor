@@ -2,15 +2,17 @@
 (function () {
     'use strict';
 
+    var DETAIL_STATUSES = ['정상', '수리', '점검', '분실'];
+
     var state = {
-        equipments:       [],
-        managers:         [],
-        filterStatus:     'all',
-        searchText:       '',
-        editingId:        null,
-        detailEquipId:    null,  // 현재 열린 낱개 모달의 equipment_id
-        isAdmin:          false,
-        userPermission:   'USER'
+        equipments:     [],
+        managers:       [],
+        filterStatus:   'all',
+        searchText:     '',
+        editingId:      null,
+        isAdmin:        false,
+        userPermission: 'USER',
+        expanded:       {}   // equipmentId → true (펼침 상태 추적)
     };
 
     /* ══════════════════════════════════════════
@@ -47,16 +49,13 @@
         var setItems = all.filter(function(e) { return e.isSet; });
         var singles  = all.filter(function(e) { return !e.isSet; });
 
-        // 총 낱개 수 (세트만 집계)
         var totalDetails = setItems.reduce(function(s, e) { return s + e.detailCount; }, 0);
         var normalDetail = setItems.reduce(function(s, e) { return s + e.normalCount; }, 0);
+        var issueDetail  = setItems.reduce(function(s, e) { return s + e.issueCount; }, 0);
 
-        // 이슈 비품: is_set=0이면 status로 판단, is_set=1이면 issueCount > 0 또는 status
         var issueEq = all.filter(function(e) {
-            if (e.isSet) return e.issueCount > 0;
-            return e.status !== '정상';
+            return e.isSet ? e.issueCount > 0 : e.status !== '정상';
         });
-        var issueDetail = setItems.reduce(function(s, e) { return s + e.issueCount; }, 0);
 
         setText('emStatTotal',    total);
         setText('emStatSet',      setItems.length);
@@ -66,7 +65,7 @@
         setText('emStatIssueSub', issueDetail > 0 ? '낱개 이슈 ' + issueDetail + '건 포함' : '');
 
         renderStatusBar(all);
-        renderAlertBanner(all, issueEq);
+        renderAlertBanner(all, issueDetail);
     }
 
     function renderStatusBar(all) {
@@ -81,7 +80,7 @@
         var inspection = all.filter(function(e) { return e.status === '점검'; }).length;
 
         if (total === 0) {
-            bar.innerHTML = '<div class="fm-bar-empty">데이터 없음</div>';
+            bar.innerHTML    = '<div class="fm-bar-empty">데이터 없음</div>';
             legend.innerHTML = '';
             if (totalEl) totalEl.textContent = '';
             return;
@@ -93,37 +92,33 @@
         var pI = (inspection / total) * 100;
 
         bar.innerHTML =
-            (pN > 0 ? '<div class="fm-bar-segment normal"     style="width:' + pN + '%"     title="정상: ' + normal     + '"></div>' : '') +
-            (pR > 0 ? '<div class="fm-bar-segment repair"     style="width:' + pR + '%"     title="수리: ' + repair     + '"></div>' : '') +
-            (pI > 0 ? '<div class="fm-bar-segment inspection" style="width:' + pI + '%" title="점검: ' + inspection + '"></div>' : '');
+            (pN > 0 ? '<div class="fm-bar-segment normal"     style="width:' + pN + '%" title="정상: '  + normal     + '"></div>' : '') +
+            (pR > 0 ? '<div class="fm-bar-segment repair"     style="width:' + pR + '%" title="수리: '  + repair     + '"></div>' : '') +
+            (pI > 0 ? '<div class="fm-bar-segment inspection" style="width:' + pI + '%" title="점검: '  + inspection + '"></div>' : '');
 
         legend.innerHTML =
-            '<div class="fm-legend-item"><span class="fm-dot normal"></span>정상 (' + normal     + ')</div>' +
-            '<div class="fm-legend-item"><span class="fm-dot repair"></span>수리 (' + repair     + ')</div>' +
+            '<div class="fm-legend-item"><span class="fm-dot normal"></span>정상 ('     + normal     + ')</div>' +
+            '<div class="fm-legend-item"><span class="fm-dot repair"></span>수리 ('     + repair     + ')</div>' +
             '<div class="fm-legend-item"><span class="fm-dot inspection"></span>점검 (' + inspection + ')</div>';
     }
 
-    function renderAlertBanner(all, issueEq) {
+    function renderAlertBanner(all, issueDetail) {
         var banner = document.getElementById('emAlertBanner');
         var chips  = document.getElementById('emAlertChips');
         if (!banner || !chips) return;
 
         var repair = all.filter(function(e) { return e.status === '수리'; }).length;
         var noMgr  = all.filter(function(e) { return !e.managerId; }).length;
-        var lost   = all.reduce(function(s, e) { return s + (e.isSet ? (e.detailCount - e.normalCount - (e.issueCount)) : 0); }, 0);
 
-        // 낱개 중 분실 항목 찾기 - 단순히 issueCount로 표시
-        var setIssue = all.reduce(function(s, e) { return s + (e.isSet ? e.issueCount : 0); }, 0);
-
-        if (repair === 0 && noMgr === 0 && setIssue === 0) {
+        if (repair === 0 && noMgr === 0 && issueDetail === 0) {
             banner.style.display = 'none';
             return;
         }
         banner.style.display = 'flex';
         var html = '';
-        if (repair   > 0) html += '<span class="fm-alert-chip red">수리 중 ' + repair + '건</span>';
-        if (setIssue > 0) html += '<span class="fm-alert-chip red">낱개 이슈 ' + setIssue + '건</span>';
-        if (noMgr    > 0) html += '<span class="fm-alert-chip gold">담당자 미지정 ' + noMgr + '건</span>';
+        if (repair      > 0) html += '<span class="fm-alert-chip red">수리 중 '     + repair      + '건</span>';
+        if (issueDetail > 0) html += '<span class="fm-alert-chip red">낱개 이슈 '   + issueDetail + '건</span>';
+        if (noMgr       > 0) html += '<span class="fm-alert-chip gold">담당자 미지정 ' + noMgr + '건</span>';
         chips.innerHTML = html;
     }
 
@@ -131,8 +126,11 @@
        테이블 렌더링
     ══════════════════════════════════════════ */
     function renderTable() {
-        var tbody   = document.getElementById('emTableBody');
+        var tbody  = document.getElementById('emTableBody');
         if (!tbody) return;
+
+        // 필터·검색 변경 시 펼침 상태 초기화
+        state.expanded = {};
 
         var filtered = getFiltered();
         var colSpan  = state.isAdmin ? 9 : 8;
@@ -148,40 +146,48 @@
         }
 
         tbody.innerHTML = filtered.map(function (eq, i) {
-            var typeBadge = eq.isSet
+            var isSet     = eq.isSet;
+            var typeBadge = isSet
                 ? '<span class="em-type-badge em-type-set">세트</span>'
                 : '<span class="em-type-badge em-type-single">단품</span>';
 
             // 수량/시리얼 셀
             var qtyCell;
-            if (eq.isSet && eq.detailCount > 0) {
-                var pct     = Math.round((eq.normalCount / eq.detailCount) * 100);
-                var hasIss  = eq.issueCount > 0;
+            if (isSet && eq.detailCount > 0) {
+                var pct    = Math.round((eq.normalCount / eq.detailCount) * 100);
+                var hasIss = eq.issueCount > 0;
                 qtyCell =
                     '<div class="em-qty-cell">' +
                         '<div class="em-qty-text"><b>' + eq.normalCount + '</b> / ' + eq.detailCount + '개 정상</div>' +
                         '<div class="em-qty-bar-wrap"><div class="em-qty-bar' + (hasIss ? ' has-issue' : '') + '" style="width:' + pct + '%"></div></div>' +
                         (hasIss ? '<div class="em-qty-issue">이슈 ' + eq.issueCount + '건</div>' : '') +
                     '</div>';
-            } else if (eq.isSet) {
+            } else if (isSet) {
                 qtyCell = '<span style="color:#8a9bab;font-size:12px;">낱개 없음</span>';
             } else {
                 qtyCell = '<code style="font-size:12px;">' + esc(eq.serialNo || '-') + '</code>';
             }
 
+            // 세트 행 이름에 펼침 아이콘
+            var nameCell = isSet
+                ? '<span class="em-expand-icon" data-id="' + eq.id + '">▶</span> ' + esc(eq.name)
+                : esc(eq.name);
+
+            // 관리 버튼 (낱개 버튼 없음)
             var manageCell = '';
             if (state.isAdmin) {
                 manageCell = '<td class="fm-manage-cell">' +
                     '<button class="btn-tbl-edit" data-action="edit"   data-id="' + eq.id + '">수정</button>' +
                     '<button class="btn-tbl-del"  data-action="delete" data-id="' + eq.id + '">삭제</button>' +
-                    (eq.isSet ? '<button class="btn-tbl-detail" data-action="detail" data-id="' + eq.id + '" data-name="' + esc(eq.name) + '">낱개</button>' : '') +
                 '</td>';
             }
 
-            return '<tr data-id="' + eq.id + '">'
+            var rowClass = isSet ? ' class="em-row-set"' : '';
+
+            return '<tr data-id="' + eq.id + '" data-is-set="' + isSet + '"' + rowClass + '>'
                 + '<td class="col-idx">' + (i + 1) + '</td>'
                 + '<td>' + typeBadge + '</td>'
-                + '<td class="td-name">' + esc(eq.name) + '</td>'
+                + '<td class="td-name">' + nameCell + '</td>'
                 + '<td>' + esc(eq.location) + '</td>'
                 + '<td>' + (eq.facilityName ? esc(eq.facilityName) : '<span style="color:#8a9bab">-</span>') + '</td>'
                 + '<td>' + qtyCell + '</td>'
@@ -192,15 +198,14 @@
         }).join('');
     }
 
-    /* ── 필터 ── */
     function getFiltered() {
         var kw = state.searchText.toLowerCase();
         return state.equipments.filter(function (eq) {
             var f = state.filterStatus;
-            if (f === 'set'    && !eq.isSet)                       return false;
-            if (f === 'single' &&  eq.isSet)                       return false;
-            if (f === '정상'   &&  eq.status !== '정상')            return false;
-            if (f === 'issue'  && eq.status === '정상' && eq.issueCount === 0) return false;
+            if (f === 'set'    && !eq.isSet)                              return false;
+            if (f === 'single' &&  eq.isSet)                              return false;
+            if (f === '정상'   &&  eq.status !== '정상')                   return false;
+            if (f === 'issue'  &&  eq.status === '정상' && eq.issueCount === 0) return false;
             if (!kw) return true;
             return (eq.name     || '').toLowerCase().indexOf(kw) >= 0
                 || (eq.location || '').toLowerCase().indexOf(kw) >= 0
@@ -211,6 +216,180 @@
     function statusBadge(status) {
         var map = { '정상': 'approved', '수리': 'waiting', '점검': 'inspection', '분실': 'rejected' };
         return '<span class="status-badge ' + (map[status] || '') + '">' + esc(status) + '</span>';
+    }
+
+    /* ══════════════════════════════════════════
+       아코디언: 세트 행 펼침/접기
+    ══════════════════════════════════════════ */
+    function toggleDetailRows(equipmentId, parentTr) {
+        var alreadyExpanded = state.expanded[equipmentId];
+
+        if (alreadyExpanded) {
+            collapseDetailRows(equipmentId, parentTr);
+        } else {
+            expandDetailRows(equipmentId, parentTr);
+        }
+    }
+
+    function collapseDetailRows(equipmentId, parentTr) {
+        state.expanded[equipmentId] = false;
+
+        // 아이콘 원복
+        var icon = parentTr.querySelector('.em-expand-icon');
+        if (icon) icon.textContent = '▶';
+        parentTr.classList.remove('em-row-expanded');
+
+        // detail rows 제거
+        removeDetailRows(equipmentId);
+    }
+
+    function removeDetailRows(equipmentId) {
+        var tbody = document.getElementById('emTableBody');
+        if (!tbody) return;
+        tbody.querySelectorAll('tr.em-detail-row[data-parent-id="' + equipmentId + '"]')
+             .forEach(function (r) { r.remove(); });
+    }
+
+    function expandDetailRows(equipmentId, parentTr) {
+        state.expanded[equipmentId] = true;
+
+        var icon = parentTr.querySelector('.em-expand-icon');
+        if (icon) icon.textContent = '▼';
+        parentTr.classList.add('em-row-expanded');
+
+        // 로딩 행 삽입
+        var colSpan = state.isAdmin ? 9 : 8;
+        var loadingTr = makeDetailRow(equipmentId,
+            '<td colspan="' + colSpan + '" style="text-align:center;color:#8a9bab;font-size:12px;padding:10px;">불러오는 중...</td>');
+        parentTr.after(loadingTr);
+
+        // 서버 조회
+        App.fetch(App.ctx + '/equipment.do?action=details&equipmentId=' + equipmentId)
+            .then(function (res) { return res.json(); })
+            .then(function (details) {
+                loadingTr.remove();
+                if (state.expanded[equipmentId]) {
+                    insertDetailRows(equipmentId, parentTr, details);
+                }
+            })
+            .catch(function () {
+                loadingTr.remove();
+            });
+    }
+
+    function refreshDetailRows(equipmentId) {
+        if (!state.expanded[equipmentId]) return;
+
+        var parentTr = document.querySelector('#emTableBody tr[data-id="' + equipmentId + '"]');
+        if (!parentTr) return;
+
+        removeDetailRows(equipmentId);
+
+        App.fetch(App.ctx + '/equipment.do?action=details&equipmentId=' + equipmentId)
+            .then(function (res) { return res.json(); })
+            .then(function (details) {
+                insertDetailRows(equipmentId, parentTr, details);
+                // 메인 행 집계 업데이트
+                var eq = state.equipments.find(function (e) { return e.id === equipmentId; });
+                if (eq) {
+                    eq.detailCount = details.length;
+                    eq.normalCount = details.filter(function (d) { return d.status === '정상'; }).length;
+                    eq.issueCount  = details.filter(function (d) { return d.status !== '정상'; }).length;
+                    renderStats();
+                    // 해당 행의 수량셀만 교체
+                    refreshQtyCell(parentTr, eq);
+                }
+            })
+            .catch(function () {});
+    }
+
+    function insertDetailRows(equipmentId, parentTr, details) {
+        var colSpan = state.isAdmin ? 9 : 8;
+
+        // 빈 경우
+        if (details.length === 0) {
+            var emptyTr = makeDetailRow(equipmentId,
+                '<td colspan="' + colSpan + '" style="text-align:center;color:#8a9bab;font-size:12px;padding:10px;">등록된 낱개가 없습니다.</td>');
+            parentTr.after(emptyTr);
+            if (state.isAdmin) appendAddRow(equipmentId, emptyTr);
+            return;
+        }
+
+        // 낱개 행들 (역순 삽입으로 순서 유지)
+        var insertRef = parentTr;
+        details.forEach(function (d, i) {
+            var statusOptions = DETAIL_STATUSES.map(function (s) {
+                return '<option value="' + s + '"' + (d.status === s ? ' selected' : '') + '>' + s + '</option>';
+            }).join('');
+
+            var manageHtml = state.isAdmin
+                ? '<select class="detail-status-sel" data-action="changeDetailStatus" data-detail-id="' + d.id + '">' + statusOptions + '</select>'
+                  + ' <button class="btn-tbl-del" style="font-size:11px;" data-action="deleteDetail" data-detail-id="' + d.id + '" data-parent-id="' + equipmentId + '">삭제</button>'
+                : '-';
+
+            var tr = makeDetailRow(equipmentId,
+                '<td style="border-left:3px solid #d0e4f7;"></td>' +
+                '<td colspan="4" class="em-detail-indent">↳ <span style="color:#8a9bab;font-size:11px;">#' + (i + 1) + '</span></td>' +
+                '<td><code style="font-size:12px;">' + esc(d.serialNo) + '</code></td>' +
+                '<td></td>' +
+                '<td class="col-status">' + statusBadge(d.status) + '</td>' +
+                (state.isAdmin ? '<td class="fm-manage-cell" style="white-space:nowrap;">' + manageHtml + '</td>' : '')
+            );
+            tr.dataset.detailId = d.id;
+
+            // insertRef 다음에 삽입
+            insertRef.after(tr);
+            insertRef = tr;
+        });
+
+        // 낱개 추가 행 (admin only)
+        if (state.isAdmin) appendAddRow(equipmentId, insertRef);
+    }
+
+    function appendAddRow(equipmentId, insertRef) {
+        var addTr = makeDetailRow(equipmentId,
+            '<td style="border-left:3px solid #d0e4f7;"></td>' +
+            '<td colspan="4" class="em-detail-indent" style="color:#52a3f5;font-size:12px;">+ 낱개 추가</td>' +
+            '<td colspan="2">' +
+                '<input type="text" class="form-input em-add-serial" placeholder="시리얼번호" ' +
+                'style="font-size:12px;padding:3px 8px;margin:0;height:auto;" data-parent-id="' + equipmentId + '">' +
+            '</td>' +
+            '<td></td>' +
+            (state.isAdmin ? '<td class="fm-manage-cell">' +
+                '<button class="btn-tbl-edit" style="font-size:11px;" data-action="confirmAddDetail" data-parent-id="' + equipmentId + '">추가</button>' +
+            '</td>' : '')
+        );
+        addTr.classList.add('em-detail-add-row');
+        insertRef.after(addTr);
+    }
+
+    function makeDetailRow(equipmentId, innerHtml) {
+        var tr = document.createElement('tr');
+        tr.className           = 'em-detail-row';
+        tr.dataset.parentId    = equipmentId;
+        tr.innerHTML           = innerHtml;
+        return tr;
+    }
+
+    // 해당 행의 수량/시리얼 셀만 교체 (renderTable 전체 재호출 없이)
+    function refreshQtyCell(parentTr, eq) {
+        var cells = parentTr.querySelectorAll('td');
+        // 6번째 셀 (0-indexed: 5) = 수량/시리얼
+        var qtyTd = cells[5];
+        if (!qtyTd) return;
+
+        if (eq.detailCount > 0) {
+            var pct    = Math.round((eq.normalCount / eq.detailCount) * 100);
+            var hasIss = eq.issueCount > 0;
+            qtyTd.innerHTML =
+                '<div class="em-qty-cell">' +
+                    '<div class="em-qty-text"><b>' + eq.normalCount + '</b> / ' + eq.detailCount + '개 정상</div>' +
+                    '<div class="em-qty-bar-wrap"><div class="em-qty-bar' + (hasIss ? ' has-issue' : '') + '" style="width:' + pct + '%"></div></div>' +
+                    (hasIss ? '<div class="em-qty-issue">이슈 ' + eq.issueCount + '건</div>' : '') +
+                '</div>';
+        } else {
+            qtyTd.innerHTML = '<span style="color:#8a9bab;font-size:12px;">낱개 없음</span>';
+        }
     }
 
     /* ══════════════════════════════════════════
@@ -260,48 +439,98 @@
         var submitBtn = document.getElementById('emModalSubmit');
         if (submitBtn) submitBtn.addEventListener('click', handleSubmit);
 
-        // 세트 여부 라디오 변경 → 수량 필드 표시/숨김
+        // 세트/단품 라디오 → 수량 필드 토글
         document.querySelectorAll('input[name="emIsSet"]').forEach(function (r) {
-            r.addEventListener('change', function () { toggleSetFields(); });
+            r.addEventListener('change', toggleSetFields);
         });
 
-        // 낱개 모달 닫기
-        bindClose('detailModalClose',  closeDetailModal);
-        bindClose('detailModalClose2', closeDetailModal);
-        var dm = document.getElementById('detailModal');
-        if (dm) dm.addEventListener('click', function (e) { if (e.target === dm) closeDetailModal(); });
-
-        // 낱개 추가 버튼
-        var addDetailBtn = document.getElementById('detailAddBtn');
-        if (addDetailBtn) addDetailBtn.addEventListener('click', handleAddDetail);
-
-        // 테이블 이벤트 위임
+        // ── 테이블 tbody 통합 이벤트 ──────────────────────────────────
         var tbody = document.getElementById('emTableBody');
-        if (tbody) {
-            tbody.addEventListener('click', function (e) {
-                var btn = e.target.closest('[data-action]');
-                if (!btn) return;
-                var action = btn.dataset.action;
-                var id     = parseInt(btn.dataset.id || btn.closest('tr').dataset.id, 10);
+        if (!tbody) return;
 
-                if      (action === 'edit')           { var eq = state.equipments.find(function(e) { return e.id === id; }); if (eq) openModal(eq); }
-                else if (action === 'delete')         { showInlineConfirm(id, btn.closest('tr')); }
-                else if (action === 'confirm-delete') { execDelete(id); }
-                else if (action === 'cancel-delete')  { renderTable(); }
-                else if (action === 'detail')         { openDetailModal(id, btn.dataset.name); }
-            });
-        }
+        // click 이벤트
+        tbody.addEventListener('click', function (e) {
+            // 버튼 클릭은 별도 처리
+            var btn = e.target.closest('button[data-action]');
+            if (btn) {
+                handleTableButtonClick(btn);
+                return;
+            }
+
+            // 세트 행 클릭 → 아코디언 토글
+            var parentTr = e.target.closest('tr[data-is-set="true"]');
+            if (parentTr && !e.target.closest('.em-detail-row')) {
+                var equipmentId = parseInt(parentTr.dataset.id, 10);
+                toggleDetailRows(equipmentId, parentTr);
+            }
+        });
+
+        // change 이벤트 (낱개 상태 변경 select)
+        tbody.addEventListener('change', function (e) {
+            var sel = e.target.closest('select[data-action="changeDetailStatus"]');
+            if (!sel) return;
+
+            var detailId    = parseInt(sel.dataset.detailId, 10);
+            var newStatus   = sel.value;
+            var detailRow   = sel.closest('tr.em-detail-row');
+            var equipmentId = detailRow ? parseInt(detailRow.dataset.parentId, 10) : null;
+
+            App.fetch(App.ctx + '/equipment.do', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ action: 'updateDetailStatus', equipmentDetailId: detailId, status: newStatus }).toString()
+            }).then(function (res) { return res.json(); })
+              .then(function (res) { if (res.success && equipmentId) refreshDetailRows(equipmentId); })
+              .catch(function () {});
+        });
     }
 
-    function bindClose(id, fn) { var el = document.getElementById(id); if (el) el.addEventListener('click', fn); }
+    function handleTableButtonClick(btn) {
+        var action = btn.dataset.action;
 
-    function toggleSetFields() {
-        var isSet     = getRadio('emIsSet') === 'true';
-        var qtyGroup  = document.getElementById('emQuantityGroup');
-        var serialLbl = document.getElementById('emSerialLabel');
-        if (qtyGroup)  qtyGroup.style.display  = isSet ? '' : 'none';
-        if (serialLbl) serialLbl.textContent    = isSet ? '시리얼 접두사' : '시리얼 번호';
-        if (isSet) setVal('emSerialNo', getVal('emSerialNo') || '');
+        // 비품 행 액션
+        if (action === 'edit') {
+            var id = parseInt(btn.dataset.id, 10);
+            var eq = state.equipments.find(function (e) { return e.id === id; });
+            if (eq) openModal(eq);
+
+        } else if (action === 'delete') {
+            var id = parseInt(btn.dataset.id, 10);
+            showInlineConfirm(id, btn.closest('tr'));
+
+        } else if (action === 'confirm-delete') {
+            execDelete(parseInt(btn.dataset.id, 10));
+
+        } else if (action === 'cancel-delete') {
+            renderTable();
+
+        // 낱개 행 액션
+        } else if (action === 'deleteDetail') {
+            if (!confirm('이 낱개를 삭제하시겠습니까?')) return;
+            var detailId    = parseInt(btn.dataset.detailId, 10);
+            var equipmentId = parseInt(btn.dataset.parentId, 10);
+            App.fetch(App.ctx + '/equipment.do', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ action: 'deleteDetail', equipmentDetailId: detailId }).toString()
+            }).then(function (res) { return res.json(); })
+              .then(function (res) { if (res.success) refreshDetailRows(equipmentId); })
+              .catch(function () {});
+
+        } else if (action === 'confirmAddDetail') {
+            var equipmentId = parseInt(btn.dataset.parentId, 10);
+            var input       = document.querySelector('.em-add-serial[data-parent-id="' + equipmentId + '"]');
+            var serial      = input ? input.value.trim() : '';
+            if (!serial) { if (input) input.focus(); return; }
+
+            App.fetch(App.ctx + '/equipment.do', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ action: 'addDetail', equipmentId: equipmentId, serialNo: serial }).toString()
+            }).then(function (res) { return res.json(); })
+              .then(function (res) { if (res.success) refreshDetailRows(equipmentId); })
+              .catch(function () {});
+        }
     }
 
     /* ══════════════════════════════════════════
@@ -333,7 +562,7 @@
             setVal('emName',        equipment.name     || '');
             setVal('emLocation',    equipment.location || '');
             setVal('emSerialNo',    equipment.serialNo || '');
-            setVal('emManager',     equipment.managerId || '');
+            setVal('emManager',     equipment.managerId  || '');
             setVal('emFacilityId',  equipment.facilityId || '');
             setRadio('emIsSet',  equipment.isSet ? 'true' : 'false');
             setRadio('emStatus', equipment.status || '정상');
@@ -355,6 +584,14 @@
         state.editingId = null;
     }
 
+    function toggleSetFields() {
+        var isSet     = getRadio('emIsSet') === 'true';
+        var qtyGroup  = document.getElementById('emQuantityGroup');
+        var serialLbl = document.getElementById('emSerialLabel');
+        if (qtyGroup)  qtyGroup.style.display = isSet ? '' : 'none';
+        if (serialLbl) serialLbl.textContent   = isSet ? '시리얼 접두사' : '시리얼 번호';
+    }
+
     function handleSubmit() {
         var name       = (getVal('emName')     || '').trim();
         var location   = (getVal('emLocation') || '').trim();
@@ -365,17 +602,16 @@
         var quantity   = parseInt(getVal('emQuantity'), 10);
         var statusEl   = document.querySelector('input[name="emStatus"]:checked');
 
-        if (!name)                             { alert('비품명을 입력하세요.');    focusEl('emName');     return; }
-        if (!location)                         { alert('보관 위치를 입력하세요.'); focusEl('emLocation'); return; }
-        if (isSet && (!quantity || quantity < 1)) { alert('낱개 수량을 입력하세요.'); focusEl('emQuantity'); return; }
-        if (!statusEl)                         { alert('상태를 선택하세요.');      return; }
+        if (!name)                               { alert('비품명을 입력하세요.');    focusEl('emName');     return; }
+        if (!location)                           { alert('보관 위치를 입력하세요.'); focusEl('emLocation'); return; }
+        if (isSet && (!quantity || quantity < 1)){ alert('낱개 수량을 입력하세요.'); focusEl('emQuantity'); return; }
+        if (!statusEl)                           { alert('상태를 선택하세요.');      return; }
 
-        var mgrObj   = mgrId ? state.managers.find(function (m) { return String(m.id) === String(mgrId); }) : null;
-        var mgrName  = mgrObj ? mgrObj.name : null;
-        var status   = statusEl.value;
-        var isEdit   = !!state.editingId;
+        var mgrObj  = mgrId ? state.managers.find(function (m) { return String(m.id) === String(mgrId); }) : null;
+        var mgrName = mgrObj ? mgrObj.name : null;
+        var status  = statusEl.value;
+        var isEdit  = !!state.editingId;
 
-        // 로컬 즉시 반영
         if (isEdit) {
             var idx = state.equipments.findIndex(function (e) { return e.id === state.editingId; });
             if (idx !== -1) {
@@ -383,7 +619,7 @@
                     name: name, location: location, serialNo: serialNo,
                     managerId: mgrId ? parseInt(mgrId, 10) : null, managerName: mgrName,
                     facilityId: facilityId ? parseInt(facilityId, 10) : null,
-                    isSet: isSet, status: status
+                    status: status
                 });
             }
         } else {
@@ -394,16 +630,17 @@
                 managerId: mgrId ? parseInt(mgrId, 10) : null, managerName: mgrName,
                 facilityId: facilityId ? parseInt(facilityId, 10) : null, facilityName: null,
                 isSet: isSet, status: status,
-                detailCount: isSet ? quantity : 0, normalCount: isSet ? quantity : 0, issueCount: 0
+                detailCount: isSet ? quantity : 0,
+                normalCount: isSet ? quantity : 0,
+                issueCount: 0
             });
         }
         closeModal();
         renderStats();
         renderTable();
 
-        // 서버 전송
         var params = {
-            action:      isEdit ? 'update' : 'save',
+            action: isEdit ? 'update' : 'save',
             equipmentId: isEdit ? state.editingId : '',
             name: name, location: location, serialNo: serialNo,
             managerId: mgrId || '', facilityId: facilityId || '',
@@ -415,7 +652,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams(params).toString()
-        }).catch(function () { console.log('Demo Mode: Server update skipped.'); });
+        }).catch(function () {});
     }
 
     /* ══════════════════════════════════════════
@@ -442,169 +679,15 @@
     }
 
     /* ══════════════════════════════════════════
-       낱개 상세 모달
-    ══════════════════════════════════════════ */
-    function openDetailModal(equipmentId, equipmentName) {
-        var modal = document.getElementById('detailModal');
-        if (!modal) return;
-
-        state.detailEquipId = equipmentId;
-        setText('detailModalTitle', esc(equipmentName || '') + ' 낱개 목록');
-        setText('detailTableBody', '');
-        var tbody = document.getElementById('detailTableBody');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="dash-empty">불러오는 중...</td></tr>';
-
-        modal.style.display = 'flex';
-        loadDetails(equipmentId);
-    }
-
-    function closeDetailModal() {
-        var modal = document.getElementById('detailModal');
-        if (modal) modal.style.display = 'none';
-        state.detailEquipId = null;
-    }
-
-    function loadDetails(equipmentId) {
-        App.fetch(App.ctx + '/equipment.do?action=details&equipmentId=' + equipmentId)
-            .then(function (res) { return res.json(); })
-            .then(function (details) { renderDetailTable(details); })
-            .catch(function (err) {
-                var tbody = document.getElementById('detailTableBody');
-                if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="dash-empty">조회 실패</td></tr>';
-            });
-    }
-
-    function renderDetailTable(details) {
-        // 통계 요약
-        var statRow = document.getElementById('detailStatRow');
-        if (statRow) {
-            var cnt = { '정상': 0, '수리': 0, '점검': 0, '분실': 0 };
-            details.forEach(function (d) { if (cnt[d.status] !== undefined) cnt[d.status]++; else cnt[d.status] = 1; });
-            statRow.innerHTML =
-                (cnt['정상'] > 0 ? '<span class="detail-stat-chip normal">정상 ' + cnt['정상'] + '</span>'  : '') +
-                (cnt['수리'] > 0 ? '<span class="detail-stat-chip repair">수리 ' + cnt['수리'] + '</span>'  : '') +
-                (cnt['점검'] > 0 ? '<span class="detail-stat-chip inspect">점검 ' + cnt['점검'] + '</span>' : '') +
-                (cnt['분실'] > 0 ? '<span class="detail-stat-chip lost">분실 ' + cnt['분실'] + '</span>'    : '') +
-                '<span style="font-size:12px;color:#8a9bab;margin-left:4px;">총 ' + details.length + '개</span>';
-        }
-
-        // 테이블 렌더
-        var tbody = document.getElementById('detailTableBody');
-        if (!tbody) return;
-
-        if (details.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="dash-empty">등록된 낱개가 없습니다.</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = details.map(function (d, i) {
-            var statusOptions = ['정상', '수리', '점검', '분실'].map(function (s) {
-                return '<option value="' + s + '"' + (d.status === s ? ' selected' : '') + '>' + s + '</option>';
-            }).join('');
-
-            var manageCell = state.isAdmin
-                ? '<td class="fm-manage-cell">' +
-                    '<select class="detail-status-sel" data-detail-id="' + d.id + '" data-action="changeStatus">' + statusOptions + '</select> ' +
-                    '<button class="btn-tbl-del" data-action="deleteDetail" data-detail-id="' + d.id + '">삭제</button>' +
-                  '</td>'
-                : '<td class="fm-manage-cell">-</td>';
-
-            return '<tr>'
-                + '<td class="col-idx">' + (i + 1) + '</td>'
-                + '<td><code style="font-size:12px;">' + esc(d.serialNo) + '</code></td>'
-                + '<td class="col-status">' + statusBadge(d.status) + '</td>'
-                + manageCell
-                + '</tr>';
-        }).join('');
-
-        // 낱개 이벤트 위임 (매번 재바인딩)
-        tbody.addEventListener('change', function (e) {
-            var sel = e.target.closest('[data-action="changeStatus"]');
-            if (!sel) return;
-            var detailId = sel.dataset.detailId;
-            var newStatus = sel.value;
-            App.fetch(App.ctx + '/equipment.do', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ action: 'updateDetailStatus', equipmentDetailId: detailId, status: newStatus }).toString()
-            }).then(function (res) { return res.json(); })
-              .then(function (res) {
-                  if (res.success) {
-                      // 통계 다시 로드
-                      loadDetails(state.detailEquipId);
-                      // 메인 테이블 집계 업데이트 (간단히 서버 재조회 대신 로컬 반영)
-                      updateLocalDetailStat(state.detailEquipId);
-                  }
-              })
-              .catch(function () {});
-        });
-
-        tbody.addEventListener('click', function (e) {
-            var btn = e.target.closest('[data-action="deleteDetail"]');
-            if (!btn) return;
-            if (!confirm('이 낱개를 삭제하시겠습니까?')) return;
-            var detailId = btn.dataset.detailId;
-            App.fetch(App.ctx + '/equipment.do', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ action: 'deleteDetail', equipmentDetailId: detailId }).toString()
-            }).then(function (res) { return res.json(); })
-              .then(function (res) {
-                  if (res.success) {
-                      loadDetails(state.detailEquipId);
-                      updateLocalDetailStat(state.detailEquipId);
-                  }
-              })
-              .catch(function () {});
-        });
-    }
-
-    function handleAddDetail() {
-        var serial = (getVal('detailNewSerial') || '').trim();
-        if (!serial) { alert('시리얼번호를 입력하세요.'); focusEl('detailNewSerial'); return; }
-        if (!state.detailEquipId) return;
-
-        App.fetch(App.ctx + '/equipment.do', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ action: 'addDetail', equipmentId: state.detailEquipId, serialNo: serial }).toString()
-        }).then(function (res) { return res.json(); })
-          .then(function (res) {
-              if (res.success) {
-                  setVal('detailNewSerial', '');
-                  loadDetails(state.detailEquipId);
-                  updateLocalDetailStat(state.detailEquipId);
-              } else {
-                  alert('추가 실패');
-              }
-          })
-          .catch(function () {});
-    }
-
-    // 메인 테이블 세트 집계 로컬 업데이트 (모달에서 변경 후 반영)
-    function updateLocalDetailStat(equipmentId) {
-        App.fetch(App.ctx + '/equipment.do?action=details&equipmentId=' + equipmentId)
-            .then(function (res) { return res.json(); })
-            .then(function (details) {
-                var eq = state.equipments.find(function (e) { return e.id === equipmentId; });
-                if (!eq) return;
-                eq.detailCount  = details.length;
-                eq.normalCount  = details.filter(function (d) { return d.status === '정상'; }).length;
-                eq.issueCount   = details.filter(function (d) { return d.status !== '정상'; }).length;
-                renderStats();
-                renderTable();
-            }).catch(function () {});
-    }
-
-    /* ══════════════════════════════════════════
        유틸
     ══════════════════════════════════════════ */
-    function setText(id, val)  { var el = document.getElementById(id); if (el) el.textContent = (val === null || val === undefined) ? '' : val; }
-    function setVal(id, val)   { var el = document.getElementById(id); if (el) el.value = (val === null || val === undefined) ? '' : val; }
+    function setText(id, val)  { var el = document.getElementById(id); if (el) el.textContent = (val == null ? '' : val); }
+    function setVal(id, val)   { var el = document.getElementById(id); if (el) el.value = (val == null ? '' : val); }
     function getVal(id)        { var el = document.getElementById(id); return el ? el.value : ''; }
     function focusEl(id)       { var el = document.getElementById(id); if (el) el.focus(); }
-    function setRadio(name, value) { document.querySelectorAll('input[name="' + name + '"]').forEach(function (r) { r.checked = (r.value === value); }); }
+    function setRadio(name, v) { document.querySelectorAll('input[name="' + name + '"]').forEach(function(r){ r.checked = r.value === v; }); }
     function getRadio(name)    { var r = document.querySelector('input[name="' + name + '"]:checked'); return r ? r.value : null; }
+    function bindClose(id, fn) { var el = document.getElementById(id); if (el) el.addEventListener('click', fn); }
     function esc(str) {
         if (!str) return '';
         return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
