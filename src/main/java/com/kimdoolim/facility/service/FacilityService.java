@@ -22,68 +22,75 @@ public class FacilityService {
 
     public List<Facility> getAllFacilities() {
         Connection conn = getConnection();
-        List<Facility> list = facilityDao.findAll(conn);
-        if (list == null) list = Collections.emptyList();
-        
-        System.out.println("DEBUG: [FacilityService] DB에서 조회된 시설 리스트: " + list);
-        for (Facility f : list) {
-            System.out.println("  - " + f.getName() + " (ID: " + f.getFacilityId() + ")");
+        try {
+            List<Facility> list = facilityDao.findAll(conn);
+            return list != null ? list : Collections.emptyList();
+        } finally {
+            close(conn);
         }
-
-        close(conn);
-        return list;
     }
 
     public List<User> getAvailableManagers() {
         Connection conn = getConnection();
-        List<User> list = loginDao.findMiddleAdmins(conn);
-        if (list == null) list = Collections.emptyList();
-        close(conn);
-        return list;
+        try {
+            List<User> list = loginDao.findMiddleAdmins(conn);
+            return list != null ? list : Collections.emptyList();
+        } finally {
+            close(conn);
+        }
     }
 
     public boolean registerFacility(Facility facility) {
         Connection conn = getConnection();
-        int result = facilityDao.save(conn, facility);
-        
-        boolean success = false;
-        if (result > 0) {
-            commit(conn);
-            success = true;
-        } else {
+        try {
+            int result = facilityDao.save(conn, facility);
+            if (result > 0) {
+                commit(conn);
+                return true;
+            }
             rollback(conn);
+            return false;
+        } catch (Exception e) {
+            rollback(conn);
+            throw e;
+        } finally {
+            close(conn);
         }
-        close(conn);
-        return success;
     }
 
     public boolean modifyFacility(Facility facility) {
         Connection conn = getConnection();
-        int result = facilityDao.update(conn, facility);
-        
-        boolean success = false;
-        if (result > 0) {
-            commit(conn);
-            success = true;
-        } else {
+        try {
+            int result = facilityDao.update(conn, facility);
+            if (result > 0) {
+                commit(conn);
+                return true;
+            }
             rollback(conn);
+            return false;
+        } catch (Exception e) {
+            rollback(conn);
+            throw e;
+        } finally {
+            close(conn);
         }
-        close(conn);
-        return success;
     }
 
     public boolean removeFacility(long facilityId) {
         Connection conn = getConnection();
-        int result = facilityDao.softDelete(conn, facilityId);
-        
-        boolean success = false;
-        if (result > 0) {
-            commit(conn);
-            success = true;
-        } else {
+        try {
+            int result = facilityDao.softDelete(conn, facilityId);
+            if (result > 0) {
+                commit(conn);
+                return true;
+            }
             rollback(conn);
+            return false;
+        } catch (Exception e) {
+            rollback(conn);
+            throw e;
+        } finally {
+            close(conn);
         }
-        close(conn);
-        return success;
     }
 }

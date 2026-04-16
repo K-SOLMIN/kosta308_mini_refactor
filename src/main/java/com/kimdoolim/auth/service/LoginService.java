@@ -20,9 +20,10 @@ public class LoginService {
         }
         
         Connection conn = getConnection();
-        User user = loginDao.findByIdAndPassword(conn, id, password);
-        close(conn);
-        
-        return user;
+        try {
+            return loginDao.findByIdAndPassword(conn, id, password);
+        } finally {
+            close(conn);
+        }
     }
 }

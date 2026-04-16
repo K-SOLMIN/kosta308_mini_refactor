@@ -6,7 +6,6 @@ import com.zaxxer.hikari.HikariDataSource;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
@@ -45,6 +44,7 @@ public class Mysql {
             config.setDriverClassName("com.mysql.cj.jdbc.Driver"); // 드라이버 명시
 
             // 3. 풀(Pool) 설정 (도쿄 리전 최적화)
+            config.setAutoCommit(false);            // Service 레이어에서 명시적 commit/rollback 관리
             config.setMaximumPoolSize(10);          // 최대 연결 개수 10개
             config.setMinimumIdle(5);               // 항상 유지할 최소 연결 개수
             config.setConnectionTimeout(30000);     // 연결 대기 시간 최대 30초
@@ -60,8 +60,12 @@ public class Mysql {
     }
 
     // 5. 외부에서 연결이 필요할 때 호출하는 메서드
-    public static Connection getConnection() throws SQLException {
-        return ds.getConnection(); // 대기실(Pool)에서 놀고 있는 연결을 하나 꺼내서 리턴
+    public static Connection getConnection() {
+        try {
+            return ds.getConnection(); // 대기실(Pool)에서 놀고 있는 연결을 하나 꺼내서 리턴
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     // (선택) 서버 종료 시 풀을 닫아주는 메서드
