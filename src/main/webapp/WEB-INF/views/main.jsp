@@ -141,7 +141,7 @@
             <a href="<%= ctx %>/equipment.do" class="menu-item" data-spa="true">
                 <span class="menu-icon">◆</span> 비품 관리
             </a>
-            <a href="#" class="menu-item">
+            <a href="<%= ctx %>/blockperiod.do" class="menu-item" data-spa="true">
                 <span class="menu-icon">◆</span> 제한 일정 관리
             </a>
         </div>

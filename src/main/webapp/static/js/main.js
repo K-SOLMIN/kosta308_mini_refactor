@@ -6,13 +6,15 @@
 
     /* ── 페이지별 스크립트·초기화 함수 등록 ── */
     var PAGE_SCRIPTS = {};
-    PAGE_SCRIPTS[CTX + '/facility.do']  = CTX + '/static/js/facility-manage.js';
-    PAGE_SCRIPTS[CTX + '/equipment.do'] = CTX + '/static/js/equipment-manage.js';
+    PAGE_SCRIPTS[CTX + '/facility.do']     = CTX + '/static/js/facility-manage.js';
+    PAGE_SCRIPTS[CTX + '/equipment.do']    = CTX + '/static/js/equipment-manage.js';
+    PAGE_SCRIPTS[CTX + '/blockperiod.do'] = CTX + '/static/js/block-period-manage.js';
 
     var PAGE_INITS = {};
-    PAGE_INITS[CTX + '/main.do']      = function() { if(window.App && App.initDashboard) App.initDashboard(); };
-    PAGE_INITS[CTX + '/facility.do']  = function() { if(window.FacilityManage)  FacilityManage.init(); };
-    PAGE_INITS[CTX + '/equipment.do'] = function() { if(window.EquipmentManage) EquipmentManage.init(); };
+    PAGE_INITS[CTX + '/main.do']         = function() { if(window.App && App.initDashboard) App.initDashboard(); };
+    PAGE_INITS[CTX + '/facility.do']     = function() { if(window.FacilityManage)    FacilityManage.init(); };
+    PAGE_INITS[CTX + '/equipment.do']    = function() { if(window.EquipmentManage)   EquipmentManage.init(); };
+    PAGE_INITS[CTX + '/blockperiod.do'] = function() { if(window.BlockPeriodManage) BlockPeriodManage.init(); };
 
     /* ── 공통 fetch 래퍼 ── */
     window.App = {
