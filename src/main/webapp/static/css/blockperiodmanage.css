@@ -64,6 +64,36 @@
 	pointer-events: none; /* JS로 직접 open() 호출 */
 }
 
+/* ══ 테이블 내 정렬 보정 ══════════════════════════════ */
+.td-name {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px;
+    vertical-align: middle !important;
+}
+
+.em-expand-icon {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+    color: #8a9bab;
+    cursor: pointer;
+    margin-top: -1px; /* 미세 조정 */
+}
+
+.status-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 2px 8px !important;
+    font-size: 11px !important;
+    height: 18px !important;
+    line-height: 1 !important;
+    margin-left: 4px;
+}
+
 /* ══ 공통 입력 폼 포커스 스타일 (Override) ═══════════════ */
 .form-input, .form-select {
     transition: border-color 0.15s, box-shadow 0.15s !important;
@@ -99,9 +129,59 @@
 	z-index: 9999;
 }
 
-/* 시간 전용 피커 너비 조정 */
+/* 시간 전용 피커 너비 및 스타일 조정 */
 .flatpickr-calendar.noCalendar {
-    width: 160px !important;
+    width: 180px !important;
+    padding: 5px 0 !important;
+    border: 1px solid #e0eaf5 !important;
+    box-shadow: 0 10px 25px rgba(20, 50, 100, 0.15) !important;
+}
+
+.flatpickr-time {
+    height: 45px !important;
+    line-height: 45px !important;
+    max-height: 45px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #fff !important;
+}
+
+.flatpickr-time .numInputWrapper {
+    flex: 1 !important;
+    height: 40px !important;
+}
+
+.flatpickr-time .numInputWrapper input {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #1e3a5f !important;
+    background: transparent !important;
+}
+
+.flatpickr-time .flatpickr-time-separator {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #1e3a5f !important;
+}
+
+/* 시간 위아래 조절 화살표 스타일 */
+.flatpickr-time .numInputWrapper span {
+    border: none !important;
+    background: #f4f7fc !important;
+    width: 20px !important;
+}
+
+.flatpickr-time .numInputWrapper span:hover {
+    background: #e0eaf5 !important;
+}
+
+.flatpickr-time .numInputWrapper span.arrowUp:after {
+    border-bottom-color: #5c7a9b !important;
+}
+
+.flatpickr-time .numInputWrapper span.arrowDown:after {
+    border-top-color: #5c7a9b !important;
 }
 
 /* ══ 헤더 (라이트 테마) ══════ */

@@ -142,7 +142,8 @@
             noCalendar: true,
             dateFormat: "H:i",
             time_24hr:  true,
-            disableMobile: true
+            disableMobile: true,
+            minuteIncrement: 10, // 10분 단위로 조절하여 스크롤 부담 감소
         });
 
         // 3. 시간 선택 (종료)
@@ -151,7 +152,8 @@
             noCalendar: true,
             dateFormat: "H:i",
             time_24hr:  true,
-            disableMobile: true
+            disableMobile: true,
+            minuteIncrement: 10,
         });
 
         // 표시 박스 클릭 시 달력 오픈
