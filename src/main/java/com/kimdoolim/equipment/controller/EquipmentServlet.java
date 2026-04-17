@@ -102,7 +102,11 @@ public class EquipmentServlet extends HttpServlet {
 
         switch (action == null ? "" : action) {
             case "save": {
-                Equipment eq = buildEquipment(req, false, "정상"); // 등록 시 상태 강제
+                // 비품 등록은 ADMIN만
+                if (loginUser.getPermission() != Permission.ADMIN) {
+                    sendJson(resp, 403, "{\"error\":\"forbidden\"}"); return;
+                }
+                Equipment eq = buildEquipment(req, false, "정상");
                 if (eq.isSet()) {
                     int qty = parseInt(req.getParameter("quantity"), 1);
                     ok = equipmentService.registerEquipmentSet(eq, qty);
@@ -112,19 +116,20 @@ public class EquipmentServlet extends HttpServlet {
                 break;
             }
             case "update":
-                ok = equipmentService.modifyEquipment(buildEquipment(req, true, null));
+                ok = equipmentService.modifyEquipment(buildEquipment(req, true, null), loginUser);
                 break;
             case "delete":
-                ok = equipmentService.removeEquipment(Long.parseLong(req.getParameter("equipmentId")));
+                ok = equipmentService.removeEquipment(Long.parseLong(req.getParameter("equipmentId")), loginUser);
                 break;
             case "updateDetailStatus":
                 ok = equipmentService.updateDetailStatus(
                     Long.parseLong(req.getParameter("equipmentDetailId")),
-                    req.getParameter("status"));
+                    req.getParameter("status"),
+                    loginUser);
                 break;
             case "addDetail": {
-                long eqId      = Long.parseLong(req.getParameter("equipmentId"));
-                EquipmentDetail newDetail = equipmentService.addDetail(eqId, req.getParameter("serialNo"));
+                long eqId = Long.parseLong(req.getParameter("equipmentId"));
+                EquipmentDetail newDetail = equipmentService.addDetail(eqId, req.getParameter("serialNo"), loginUser);
                 if (newDetail != null) {
                     String ser = newDetail.getSerialNo() != null ? newDetail.getSerialNo().replace("\"", "\\\"") : "";
                     sendJson(resp, 200,
@@ -136,7 +141,7 @@ public class EquipmentServlet extends HttpServlet {
                 return;
             }
             case "deleteDetail":
-                ok = equipmentService.removeDetail(Long.parseLong(req.getParameter("equipmentDetailId")));
+                ok = equipmentService.removeDetail(Long.parseLong(req.getParameter("equipmentDetailId")), loginUser);
                 break;
             default:
                 sendJson(resp, 400, "{\"error\":\"unknown action\"}");

@@ -115,6 +115,20 @@ public class EquipmentDetailDao {
         return null;
     }
 
+    // ── 낱개 → 부모 equipment_id 조회 (권한 검증용) ─────────────────
+    public Long findEquipmentIdByDetailId(Connection conn, long detailId) {
+        String sql = "SELECT equipment_id FROM EQUIPMENTDETAIL WHERE equipment_detail_id = ? AND check_delete = 0";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, detailId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getLong("equipment_id");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     // ── 낱개 상태 변경 ───────────────────────────────────────────────
     public int updateStatus(Connection conn, long detailId, String status) {
         String sql = "UPDATE EQUIPMENTDETAIL SET status = ? WHERE equipment_detail_id = ?";
