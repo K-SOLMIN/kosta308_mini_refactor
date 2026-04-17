@@ -316,4 +316,12 @@
 
 .detail-status-sel { font-size:12px; padding:3px 6px; border:1px solid #dee2e6; border-radius:4px;
     background:#fff; cursor:pointer; }
+
+.em-row-set, .em-row-single { cursor:pointer; }
+.em-row-set:hover, .em-row-single:hover { background:#f0f4ff !important; }
+.em-row-expanded { background:#ebf3ff !important; }
+.em-expand-icon { display:inline-block; font-size:10px; color:#7a90b0; margin-right:4px;
+    transition:transform .2s; user-select:none; }
+.em-detail-row { background:#f8fbff; }
+.em-detail-indent { padding-left:20px !important; }
 </style>

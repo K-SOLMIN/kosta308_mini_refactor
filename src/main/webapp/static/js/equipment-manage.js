@@ -168,10 +168,8 @@
                 qtyCell = '<code style="font-size:12px;">' + esc(eq.serialNo || '-') + '</code>';
             }
 
-            // 세트 행 이름에 펼침 아이콘
-            var nameCell = isSet
-                ? '<span class="em-expand-icon" data-id="' + eq.id + '">▶</span> ' + esc(eq.name)
-                : esc(eq.name);
+            // 모든 행에 펼침 아이콘
+            var nameCell = '<span class="em-expand-icon" data-id="' + eq.id + '">▶</span> ' + esc(eq.name);
 
             // 관리 버튼 (낱개 버튼 없음)
             var manageCell = '';
@@ -182,7 +180,7 @@
                 '</td>';
             }
 
-            var rowClass = isSet ? ' class="em-row-set"' : '';
+            var rowClass = ' class="em-row-set' + (isSet ? '' : ' em-row-single') + '"';
 
             return '<tr data-id="' + eq.id + '" data-is-set="' + isSet + '"' + rowClass + '>'
                 + '<td class="col-idx">' + (i + 1) + '</td>'
@@ -457,9 +455,9 @@
                 return;
             }
 
-            // 세트 행 클릭 → 아코디언 토글
-            var parentTr = e.target.closest('tr[data-is-set="true"]');
-            if (parentTr && !e.target.closest('.em-detail-row')) {
+            // 비품 행 클릭 → 아코디언 토글 (세트/단품 모두)
+            var parentTr = e.target.closest('tr[data-id]');
+            if (parentTr && !e.target.closest('.em-detail-row') && !e.target.closest('select')) {
                 var equipmentId = parseInt(parentTr.dataset.id, 10);
                 toggleDetailRows(equipmentId, parentTr);
             }
