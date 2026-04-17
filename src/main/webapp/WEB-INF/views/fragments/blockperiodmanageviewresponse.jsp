@@ -5,15 +5,19 @@
 <%@ page import="java.util.List" %>
 <%
     boolean isAdmin = Boolean.TRUE.equals(request.getAttribute("isAdmin"));
+
     @SuppressWarnings("unchecked")
     List<BlockPeriod> blockPeriods = (List<BlockPeriod>) request.getAttribute("blockPeriods");
     if (blockPeriods == null) blockPeriods = java.util.Collections.emptyList();
+    
     @SuppressWarnings("unchecked")
     List<Facility> facilities = (List<Facility>) request.getAttribute("facilities");
     if (facilities == null) facilities = java.util.Collections.emptyList();
+    
     @SuppressWarnings("unchecked")
     List<Equipment> equipments = (List<Equipment>) request.getAttribute("equipments");
     if (equipments == null) equipments = java.util.Collections.emptyList();
+    
     int colCount = isAdmin ? 5 : 4;
 %>
 
@@ -188,7 +192,7 @@
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">시작 날짜 <span class="form-required">*</span></label>
-                    <input type="date" id="bpStartDate" class="form-input">
+                    <input type="text" id="bpStartDate" class="form-input" placeholder="날짜 선택" readonly>
                 </div>
                 <div class="form-group">
                     <label class="form-label">시작 시간 <span style="font-size:11px;color:#8a9bab;">(미입력 시 00:00)</span></label>
@@ -199,7 +203,7 @@
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">종료 날짜 <span class="form-required">*</span></label>
-                    <input type="date" id="bpEndDate" class="form-input">
+                    <input type="text" id="bpEndDate" class="form-input" placeholder="날짜 선택" readonly>
                 </div>
                 <div class="form-group">
                     <label class="form-label">종료 시간 <span style="font-size:11px;color:#8a9bab;">(미입력 시 23:59)</span></label>

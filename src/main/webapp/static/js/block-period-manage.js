@@ -13,6 +13,23 @@
         expanded:     {}
     };
 
+    // Flatpickr 한국어 로케일 (CDN 로케일 파일 없이 인라인 정의)
+    var FP_KO = {
+        weekdays: {
+            shorthand: ['일', '월', '화', '수', '목', '금', '토'],
+            longhand:  ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일']
+        },
+        months: {
+            shorthand: ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+            longhand:  ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월']
+        },
+        firstDayOfWeek: 0,
+        ordinal: function () { return '일'; }
+    };
+
+    var fpStart = null;
+    var fpEnd   = null;
+
     /* ══════════════════════════════════════════
        초기화
     ══════════════════════════════════════════ */
@@ -31,9 +48,42 @@
             state.periods = []; state.facilities = []; state.equipments = [];
         }
 
+        initFlatpickr();
         renderStats();
         renderTable();
         setupListeners();
+    }
+
+    /* ══════════════════════════════════════════
+       Flatpickr 초기화
+    ══════════════════════════════════════════ */
+    function initFlatpickr() {
+        if (typeof flatpickr === 'undefined') return;
+
+        var commonOpts = {
+            locale:        FP_KO,
+            dateFormat:    'Y-m-d',
+            disableMobile: true,
+            allowInput:    false
+        };
+
+        fpStart = flatpickr('#bpStartDate', Object.assign({}, commonOpts, {
+            onChange: function (selectedDates) {
+                // 시작일 선택 시 종료일 최소값 연동
+                if (fpEnd && selectedDates[0]) {
+                    fpEnd.set('minDate', selectedDates[0]);
+                }
+            }
+        }));
+
+        fpEnd = flatpickr('#bpEndDate', Object.assign({}, commonOpts, {
+            onChange: function (selectedDates) {
+                // 종료일 선택 시 시작일 최대값 연동
+                if (fpStart && selectedDates[0]) {
+                    fpStart.set('maxDate', selectedDates[0]);
+                }
+            }
+        }));
     }
 
     /* ══════════════════════════════════════════
@@ -339,10 +389,10 @@
 
         setVal('bpBlockPeriodId', '');
         setVal('bpTitle',         '');
-        setVal('bpStartDate',     '');
         setVal('bpStartTime',     '');
-        setVal('bpEndDate',       '');
         setVal('bpEndTime',       '');
+        if (fpStart) { fpStart.clear(); fpStart.set('maxDate', null); }
+        if (fpEnd)   { fpEnd.clear();   fpEnd.set('minDate', null);   }
 
         if (period) {
             titleEl.textContent   = '제한 일정 수정';
@@ -354,13 +404,12 @@
 
             // "yyyy-MM-dd HH:mm:ss" → date / time 분리
             var parts = splitDatetime(period.startDatetime);
-            setVal('bpStartDate', parts.date);
-            setVal('bpStartTime', parts.time);
+            if (fpStart) fpStart.setDate(parts.date, false);
+            setVal('bpStartTime', parts.time === '00:00' ? '' : parts.time);
 
             var eParts = splitDatetime(period.endDatetime);
-            // 23:59:59 는 종일이므로 time 필드 비워줌
-            setVal('bpEndDate', eParts.date);
-            setVal('bpEndTime', eParts.time === '23:59:59' ? '' : eParts.time.substring(0, 5));
+            if (fpEnd) fpEnd.setDate(eParts.date, false);
+            setVal('bpEndTime', eParts.time === '23:59' ? '' : eParts.time);
         } else {
             titleEl.textContent   = '제한 일정 등록';
             submitBtn.textContent = '등록';
@@ -385,9 +434,9 @@
         var endTime   = (getVal('bpEndTime')   || '').trim();
         var isEdit    = !!state.editingId;
 
-        if (!title)     { alert('제목을 입력하세요.');       focusEl('bpTitle');     return; }
-        if (!startDate) { alert('시작 날짜를 입력하세요.'); focusEl('bpStartDate'); return; }
-        if (!endDate)   { alert('종료 날짜를 입력하세요.'); focusEl('bpEndDate');   return; }
+        if (!title)     { alert('제목을 입력하세요.');       focusEl('bpTitle');   return; }
+        if (!startDate) { alert('시작 날짜를 선택하세요.'); if (fpStart) fpStart.open(); return; }
+        if (!endDate)   { alert('종료 날짜를 선택하세요.'); if (fpEnd)   fpEnd.open();   return; }
 
         // 날짜/시간 조합
         var startDatetime = startDate + ' ' + (startTime ? startTime + ':00' : '00:00:00');

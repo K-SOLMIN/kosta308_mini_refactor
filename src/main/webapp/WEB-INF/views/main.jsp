@@ -35,6 +35,9 @@
     <link rel="stylesheet" href="<%= request.getContextPath() %>/static/css/main.css?v=<%=System.currentTimeMillis()%>">
     <!-- FullCalendar CDN -->
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+    <!-- Flatpickr (날짜 달력 피커) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 </head>
 <body>
 
