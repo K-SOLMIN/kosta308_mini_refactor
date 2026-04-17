@@ -3,14 +3,43 @@ package com.kimdoolim.equipment.dao;
 import com.kimdoolim.dto.EquipmentDetail;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+
 
 public class EquipmentDetailDao {
 
     private static final EquipmentDetailDao instance = new EquipmentDetailDao();
     private EquipmentDetailDao() {}
     public static EquipmentDetailDao getInstance() { return instance; }
+
+    // ── 전체 낱개를 한 번에 조회 (equipmentId → List) ─────────────────
+    public Map<Long, List<EquipmentDetail>> findAllGrouped(Connection conn) {
+        String sql =
+            "SELECT equipment_detail_id, equipment_id, serial_no, status, check_delete " +
+            "FROM EQUIPMENTDETAIL " +
+            "WHERE check_delete = 0 " +
+            "ORDER BY equipment_id, equipment_detail_id";
+
+        Map<Long, List<EquipmentDetail>> map = new LinkedHashMap<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                long eqId = rs.getLong("equipment_id");
+                map.computeIfAbsent(eqId, k -> new ArrayList<>()).add(
+                    EquipmentDetail.builder()
+                        .equipmentDetailId(rs.getLong("equipment_detail_id"))
+                        .equipmentId(eqId)
+                        .serialNo(rs.getString("serial_no"))
+                        .status(rs.getString("status"))
+                        .checkDelete(rs.getInt("check_delete") == 1)
+                        .build()
+                );
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return map;
+    }
 
     // ── 특정 비품의 낱개 전체 조회 ───────────────────────────────────
     public List<EquipmentDetail> findByEquipmentId(Connection conn, long equipmentId) {
@@ -62,17 +91,28 @@ public class EquipmentDetailDao {
         return count;
     }
 
-    // ── 낱개 1건 추가 ────────────────────────────────────────────────
-    public int save(Connection conn, long equipmentId, String serialNo) {
+    // ── 낱개 1건 추가 (생성된 객체 반환) ────────────────────────────
+    public EquipmentDetail saveAndGet(Connection conn, long equipmentId, String serialNo) {
         String sql = "INSERT INTO EQUIPMENTDETAIL (equipment_id, serial_no, status, check_delete) VALUES (?, ?, '정상', 0)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setLong(1, equipmentId);
             ps.setString(2, serialNo);
-            return ps.executeUpdate();
+            if (ps.executeUpdate() == 0) return null;
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) {
+                    return EquipmentDetail.builder()
+                        .equipmentDetailId(keys.getLong(1))
+                        .equipmentId(equipmentId)
+                        .serialNo(serialNo)
+                        .status("정상")
+                        .checkDelete(false)
+                        .build();
+                }
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            return -1;
         }
+        return null;
     }
 
     // ── 낱개 상태 변경 ───────────────────────────────────────────────

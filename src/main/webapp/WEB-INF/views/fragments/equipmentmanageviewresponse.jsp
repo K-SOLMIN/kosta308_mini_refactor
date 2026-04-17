@@ -1,6 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ page import="com.kimdoolim.dto.User, com.kimdoolim.dto.Permission" %>
-<%@ page import="com.kimdoolim.dto.Equipment" %>
+<%@ page import="com.kimdoolim.dto.Equipment, com.kimdoolim.dto.EquipmentDetail" %>
 <%@ page import="java.util.List" %>
 <%
     boolean isAdmin = Boolean.TRUE.equals(request.getAttribute("isAdmin"));
@@ -40,7 +40,19 @@
             "isSet":<%= eq.isSet() %>,
             "detailCount":<%= eq.getDetailCount() %>,
             "normalCount":<%= eq.getNormalCount() %>,
-            "issueCount":<%= eq.getIssueCount() %>
+            "issueCount":<%= eq.getIssueCount() %>,
+            "details":[<%
+                List<EquipmentDetail> dList = eq.getDetails();
+                for (int j = 0; j < dList.size(); j++) {
+                    EquipmentDetail d = dList.get(j);
+                    String dSerial = d.getSerialNo() != null ? d.getSerialNo().replace("\"","\\\"") : "";
+                    %>{
+                        "id":<%= d.getEquipmentDetailId() %>,
+                        "serialNo":"<%= dSerial %>",
+                        "status":"<%= d.getStatus() %>"
+                    }<%= j < dList.size() - 1 ? "," : "" %><%
+                }
+            %>]
         }<%= i < equipments.size() - 1 ? "," : "" %><%
             }
         %>]

@@ -255,24 +255,9 @@
         if (icon) icon.textContent = '▼';
         parentTr.classList.add('em-row-expanded');
 
-        // 로딩 행 삽입
-        var colSpan = state.isAdmin ? 9 : 8;
-        var loadingTr = makeDetailRow(equipmentId,
-            '<td colspan="' + colSpan + '" style="text-align:center;color:#8a9bab;font-size:12px;padding:10px;">불러오는 중...</td>');
-        parentTr.after(loadingTr);
-
-        // 서버 조회
-        App.fetch(App.ctx + '/equipment.do?action=details&equipmentId=' + equipmentId)
-            .then(function (res) { return res.json(); })
-            .then(function (details) {
-                loadingTr.remove();
-                if (state.expanded[equipmentId]) {
-                    insertDetailRows(equipmentId, parentTr, details);
-                }
-            })
-            .catch(function () {
-                loadingTr.remove();
-            });
+        var eq      = state.equipments.find(function (e) { return e.id === equipmentId; });
+        var details = eq ? (eq.details || []) : [];
+        insertDetailRows(equipmentId, parentTr, details);
     }
 
     function refreshDetailRows(equipmentId) {
@@ -283,22 +268,18 @@
 
         removeDetailRows(equipmentId);
 
-        App.fetch(App.ctx + '/equipment.do?action=details&equipmentId=' + equipmentId)
-            .then(function (res) { return res.json(); })
-            .then(function (details) {
-                insertDetailRows(equipmentId, parentTr, details);
-                // 메인 행 집계 업데이트
-                var eq = state.equipments.find(function (e) { return e.id === equipmentId; });
-                if (eq) {
-                    eq.detailCount = details.length;
-                    eq.normalCount = details.filter(function (d) { return d.status === '정상'; }).length;
-                    eq.issueCount  = details.filter(function (d) { return d.status !== '정상'; }).length;
-                    renderStats();
-                    // 해당 행의 수량셀만 교체
-                    refreshQtyCell(parentTr, eq);
-                }
-            })
-            .catch(function () {});
+        var eq = state.equipments.find(function (e) { return e.id === equipmentId; });
+        if (!eq) return;
+
+        // 집계 재계산
+        var details    = eq.details || [];
+        eq.detailCount = details.length;
+        eq.normalCount = details.filter(function (d) { return d.status === '정상'; }).length;
+        eq.issueCount  = details.filter(function (d) { return d.status !== '정상'; }).length;
+
+        insertDetailRows(equipmentId, parentTr, details);
+        renderStats();
+        refreshQtyCell(parentTr, eq);
     }
 
     function insertDetailRows(equipmentId, parentTr, details) {
@@ -478,7 +459,17 @@
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({ action: 'updateDetailStatus', equipmentDetailId: detailId, status: newStatus }).toString()
             }).then(function (res) { return res.json(); })
-              .then(function (res) { if (res.success && equipmentId) refreshDetailRows(equipmentId); })
+              .then(function (res) {
+                  if (res.success && equipmentId) {
+                      // state 직접 업데이트
+                      var eq = state.equipments.find(function (e) { return e.id === equipmentId; });
+                      if (eq && eq.details) {
+                          var d = eq.details.find(function (d) { return d.id === detailId; });
+                          if (d) d.status = newStatus;
+                      }
+                      refreshDetailRows(equipmentId);
+                  }
+              })
               .catch(function () {});
         });
     }
@@ -512,7 +503,15 @@
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({ action: 'deleteDetail', equipmentDetailId: detailId }).toString()
             }).then(function (res) { return res.json(); })
-              .then(function (res) { if (res.success) refreshDetailRows(equipmentId); })
+              .then(function (res) {
+                  if (res.success) {
+                      var eq = state.equipments.find(function (e) { return e.id === equipmentId; });
+                      if (eq && eq.details) {
+                          eq.details = eq.details.filter(function (d) { return d.id !== detailId; });
+                      }
+                      refreshDetailRows(equipmentId);
+                  }
+              })
               .catch(function () {});
 
         } else if (action === 'confirmAddDetail') {
@@ -526,7 +525,16 @@
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({ action: 'addDetail', equipmentId: equipmentId, serialNo: serial }).toString()
             }).then(function (res) { return res.json(); })
-              .then(function (res) { if (res.success) refreshDetailRows(equipmentId); })
+              .then(function (res) {
+                  if (res.success && res.detail) {
+                      var eq = state.equipments.find(function (e) { return e.id === equipmentId; });
+                      if (eq) {
+                          if (!eq.details) eq.details = [];
+                          eq.details.push(res.detail);
+                      }
+                      refreshDetailRows(equipmentId);
+                  }
+              })
               .catch(function () {});
         }
     }

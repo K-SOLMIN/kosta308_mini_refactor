@@ -1,5 +1,8 @@
 package com.kimdoolim.dto;
 
+import java.util.Collections;
+import java.util.List;
+
 public class Equipment {
 
     private long    equipmentId;
@@ -17,6 +20,9 @@ public class Equipment {
     private int detailCount;  // 총 낱개 수 (0이면 단품으로 간주)
     private int normalCount;  // 정상 낱개 수
     private int issueCount;   // 이슈(수리·점검·분실) 낱개 수
+
+    // eager load: 낱개 목록
+    private List<EquipmentDetail> details;
 
     public static Builder builder() { return new Builder(); }
 
@@ -78,9 +84,11 @@ public class Equipment {
     public String  getSerialNo()     { return serialNo; }
     public String  getStatus()       { return status; }
     public boolean isCheckDelete()   { return checkDelete; }
-    public int     getDetailCount()  { return detailCount; }
-    public int     getNormalCount()  { return normalCount; }
-    public int     getIssueCount()   { return issueCount; }
+    public int                    getDetailCount() { return detailCount; }
+    public int                    getNormalCount() { return normalCount; }
+    public int                    getIssueCount()  { return issueCount; }
+    public List<EquipmentDetail>  getDetails()     { return details != null ? details : Collections.emptyList(); }
+    public void                   setDetails(List<EquipmentDetail> details) { this.details = details; }
 
     /** EQUIPMENTDETAIL row가 1개라도 있으면 세트, 없으면 단품 */
     public boolean isSet() { return detailCount > 0; }

@@ -33,6 +33,7 @@ public class EquipmentServlet extends HttpServlet {
             else         resp.sendRedirect(req.getContextPath() + "/index.jsp");
             return;
         }
+        
         if (loginUser.getPermission() == Permission.USER) {
             if (isFetch) sendJson(resp, 403, "{\"error\":\"forbidden\"}");
             else         resp.sendRedirect(req.getContextPath() + "/main.do");
@@ -92,7 +93,7 @@ public class EquipmentServlet extends HttpServlet {
         if (loginUser.getPermission() == Permission.USER) { sendJson(resp, 403, "{\"error\":\"forbidden\"}"); return; }
 
         String action = req.getParameter("action");
-        boolean ok;
+        boolean ok = false;
 
         switch (action == null ? "" : action) {
             case "save": {
@@ -116,11 +117,19 @@ public class EquipmentServlet extends HttpServlet {
                     Long.parseLong(req.getParameter("equipmentDetailId")),
                     req.getParameter("status"));
                 break;
-            case "addDetail":
-                ok = equipmentService.addDetail(
-                    Long.parseLong(req.getParameter("equipmentId")),
-                    req.getParameter("serialNo"));
-                break;
+            case "addDetail": {
+                long eqId      = Long.parseLong(req.getParameter("equipmentId"));
+                EquipmentDetail newDetail = equipmentService.addDetail(eqId, req.getParameter("serialNo"));
+                if (newDetail != null) {
+                    String ser = newDetail.getSerialNo() != null ? newDetail.getSerialNo().replace("\"", "\\\"") : "";
+                    sendJson(resp, 200,
+                        "{\"success\":true,\"detail\":{\"id\":" + newDetail.getEquipmentDetailId() +
+                        ",\"serialNo\":\"" + ser + "\",\"status\":\"" + newDetail.getStatus() + "\"}}");
+                } else {
+                    sendJson(resp, 200, "{\"success\":false}");
+                }
+                return;
+            }
             case "deleteDetail":
                 ok = equipmentService.removeDetail(Long.parseLong(req.getParameter("equipmentDetailId")));
                 break;

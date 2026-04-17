@@ -8,8 +8,8 @@ import com.kimdoolim.equipment.dao.EquipmentDao;
 import com.kimdoolim.equipment.dao.EquipmentDetailDao;
 
 import java.sql.Connection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+
 
 import static com.kimdoolim.common.Mysql.*;
 
@@ -23,12 +23,18 @@ public class EquipmentService {
     private final EquipmentDetailDao equipmentDetailDao = EquipmentDetailDao.getInstance();
     private final LoginDao           loginDao           = LoginDao.getInstance();
 
-    // ── 비품 전체 조회 ───────────────────────────────────────────────
+    // ── 비품 전체 조회 (낱개 포함 eager load) ───────────────────────
     public List<Equipment> getAllEquipments() {
         Connection conn = getConnection();
         try {
             List<Equipment> list = equipmentDao.findAll(conn);
-            return list != null ? list : Collections.emptyList();
+            if (list == null) return Collections.emptyList();
+
+            Map<Long, List<EquipmentDetail>> detailMap = equipmentDetailDao.findAllGrouped(conn);
+            for (Equipment eq : list) {
+                eq.setDetails(detailMap.getOrDefault(eq.getEquipmentId(), Collections.emptyList()));
+            }
+            return list;
         } finally {
             close(conn);
         }
@@ -141,14 +147,14 @@ public class EquipmentService {
         }
     }
 
-    // ── 낱개 1건 추가 ────────────────────────────────────────────────
-    public boolean addDetail(long equipmentId, String serialNo) {
+    // ── 낱개 1건 추가 (생성된 객체 반환) ────────────────────────────
+    public EquipmentDetail addDetail(long equipmentId, String serialNo) {
         Connection conn = getConnection();
         try {
-            int result = equipmentDetailDao.save(conn, equipmentId, serialNo);
-            if (result > 0) { commit(conn); return true; }
+            EquipmentDetail detail = equipmentDetailDao.saveAndGet(conn, equipmentId, serialNo);
+            if (detail != null) { commit(conn); return detail; }
             rollback(conn);
-            return false;
+            return null;
         } catch (Exception e) {
             rollback(conn);
             throw e;
