@@ -1,0 +1,122 @@
+@charset "UTF-8";
+/* ── 비품 전용 추가 스타일 ── */
+.em-type-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.em-type-set {
+	background: #e8f0fe;
+	color: #3b5bdb;
+}
+
+.em-type-single {
+	background: #f0fdf4;
+	color: #2f9e44;
+}
+
+.em-qty-cell {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+.em-qty-bar-wrap {
+	width: 100%;
+	background: #e9ecef;
+	border-radius: 4px;
+	height: 6px;
+	overflow: hidden;
+}
+
+.em-qty-bar {
+	height: 6px;
+	background: #40c057;
+	border-radius: 4px;
+	transition: width .3s;
+}
+
+.em-qty-bar.has-issue {
+	background: #fd7e14;
+}
+
+.em-qty-text {
+	font-size: 12px;
+	color: #495057;
+}
+
+.em-qty-issue {
+	font-size: 11px;
+	color: #e03131;
+}
+
+.detail-stat-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 4px 10px;
+	border-radius: 12px;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.detail-stat-chip.normal {
+	background: #d3f9d8;
+	color: #2f9e44;
+}
+
+.detail-stat-chip.repair {
+	background: #fff3cd;
+	color: #e67700;
+}
+
+.detail-stat-chip.inspect {
+	background: #e8f4fd;
+	color: #1971c2;
+}
+
+.detail-stat-chip.lost {
+	background: #ffe8e8;
+	color: #c92a2a;
+}
+
+.detail-status-sel {
+	font-size: 12px;
+	padding: 3px 6px;
+	border: 1px solid #dee2e6;
+	border-radius: 4px;
+	background: #fff;
+	cursor: pointer;
+}
+
+.em-row-set, .em-row-single {
+	cursor: pointer;
+}
+
+.em-row-set:hover, .em-row-single:hover {
+	background: #f0f4ff !important;
+}
+
+.em-row-expanded {
+	background: #ebf3ff !important;
+}
+
+.em-expand-icon {
+	display: inline-block;
+	font-size: 10px;
+	color: #7a90b0;
+	margin-right: 4px;
+	transition: transform .2s;
+	user-select: none;
+}
+
+.em-detail-row {
+	background: #f8fbff;
+}
+
+.em-detail-indent {
+	padding-left: 20px !important;
+}

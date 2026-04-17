@@ -184,30 +184,42 @@
 
             <div class="form-row">
                 <div class="form-group" style="flex:1;">
-                    <label class="form-label">제목 (사유) <span class="form-required">*</span></label>
+                    <label class="form-label">제한일정명 <span class="form-required">*</span></label>
                     <input type="text" id="bpTitle" class="form-input" placeholder="예: 하계 방학 시설 점검" maxlength="100">
                 </div>
             </div>
 
+            <!-- 기간 선택 (Range Picker) -->
             <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">시작 날짜 <span class="form-required">*</span></label>
-                    <input type="text" id="bpStartDate" class="form-input" placeholder="날짜 선택" readonly>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">시작 시간 <span style="font-size:11px;color:#8a9bab;">(미입력 시 00:00)</span></label>
-                    <input type="time" id="bpStartTime" class="form-input">
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label">제한 기간 <span class="form-required">*</span></label>
+                    <div class="bp-range-wrap" id="bpRangeWrap">
+                        <!-- 클릭 시 달력 오픈 -->
+                        <div class="bp-range-display" id="bpRangeDisplay">
+                            <div class="bp-range-box">
+                                <span class="bp-range-lbl">시작</span>
+                                <span class="bp-range-val empty" id="bpStartVal">날짜 선택</span>
+                            </div>
+                            <div class="bp-range-box">
+                                <span class="bp-range-lbl">종료</span>
+                                <span class="bp-range-val empty" id="bpEndVal">날짜 선택</span>
+                            </div>
+                        </div>
+                        <!-- Flatpickr 연결 input (시각적으로 숨김) -->
+                        <input type="text" id="bpDateRange" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;pointer-events:none;border:none;padding:0;">
+                    </div>
                 </div>
             </div>
 
+            <!-- 시간 선택 -->
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">종료 날짜 <span class="form-required">*</span></label>
-                    <input type="text" id="bpEndDate" class="form-input" placeholder="날짜 선택" readonly>
+                    <label class="form-label" for="bpStartTime">시작 시간 <span style="font-size:11px;color:#8a9bab;">(미입력 시 00:00 종일 시작)</span></label>
+                    <input type="text" id="bpStartTime" class="form-input" placeholder="00:00" readonly>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">종료 시간 <span style="font-size:11px;color:#8a9bab;">(미입력 시 23:59)</span></label>
-                    <input type="time" id="bpEndTime" class="form-input">
+                    <label class="form-label" for="bpEndTime">종료 시간 <span style="font-size:11px;color:#8a9bab;">(미입력 시 23:59 종일 종료)</span></label>
+                    <input type="text" id="bpEndTime" class="form-input" placeholder="23:59" readonly>
                 </div>
             </div>
         </div>

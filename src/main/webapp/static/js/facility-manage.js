@@ -47,35 +47,6 @@
     }
 
     /* ══════════════════════════════════════════
-       Mock 데이터 (풍부하게 보강)
-    ══════════════════════════════════════════ */
-    function getMockFacilities() {
-        return [
-            { id:101, name:'대강당 (Demo)',     location:'본관 3층',  managerId:2, managerName:'김관리', capacity:250, maxValue:1, maxUnit:'주', status:'정상' },
-            { id:102, name:'컴퓨터실 1',      location:'별관 2층',  managerId:3, managerName:'이관리', capacity:40,  maxValue:3, maxUnit:'일', status:'정상' },
-            { id:103, name:'컴퓨터실 2',      location:'별관 2층',  managerId:3, managerName:'이관리', capacity:40,  maxValue:3, maxUnit:'일', status:'수리' },
-            { id:104, name:'회의실 A',        location:'본관 2층',  managerId:4, managerName:'박관리', capacity:15,  maxValue:2, maxUnit:'일', status:'정상' },
-            { id:105, name:'회의실 B (점검)',  location:'본관 2층',  managerId:null, managerName:null,  capacity:12,  maxValue:2, maxUnit:'일', status:'점검' },
-            { id:106, name:'세미나실 101',    location:'본관 1층',  managerId:null, managerName:null,  capacity:60,  maxValue:1, maxUnit:'일', status:'정상' },
-            { id:107, name:'실내 체육관',     location:'체육관동',  managerId:5, managerName:'최관리', capacity:500, maxValue:1, maxUnit:'주', status:'정상' },
-            { id:108, name:'음악실',          location:'별관 4층',  managerId:6, managerName:'수지',   capacity:45,  maxValue:2, maxUnit:'일', status:'정상' },
-            { id:109, name:'무용 연습실',     location:'본관 지하1층', managerId:7, managerName:'솔민',   capacity:20,  maxValue:4, maxUnit:'일', status:'정상' }
-        ];
-    }
-
-    function getMockManagers() {
-        return [
-            { id:2, name:'김관리' },
-            { id:3, name:'이관리' },
-            { id:4, name:'박관리' },
-            { id:5, name:'최관리' },
-            { id:6, name:'수지' },
-            { id:7, name:'솔민' },
-            { id:8, name:'민중' }
-        ];
-    }
-
-    /* ══════════════════════════════════════════
        통계 카드 렌더링
     ══════════════════════════════════════════ */
     function renderStats() {

@@ -1,0 +1,391 @@
+@charset "UTF-8";
+/* ══ 기간 선택 표시 박스 ════════════════════════════════ */
+.bp-range-wrap {
+	position: relative;
+}
+
+.bp-range-display {
+	display: flex;
+	align-items: center;
+	border: 1.5px solid #d0dce8;
+	border-radius: 8px;
+	padding: 10px 14px;
+	cursor: pointer;
+	background: #fff;
+	gap: 10px;
+	transition: border-color 0.15s, box-shadow 0.15s;
+	user-select: none;
+}
+
+.bp-range-display:hover {
+	border-color: #1565c0;
+	box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.08);
+}
+
+.bp-range-box {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	gap: 3px;
+}
+
+.bp-range-lbl {
+	font-size: 10px;
+	color: #9aabb8;
+	font-weight: 700;
+	letter-spacing: 0.4px;
+	text-transform: uppercase;
+}
+
+.bp-range-val {
+	font-size: 14px;
+	font-weight: 500;
+	color: #2c3e50;
+}
+
+.bp-range-val.empty {
+	color: #b0bec5;
+}
+
+.bp-range-sep {
+	color: #b0bec5;
+	font-size: 20px;
+	flex-shrink: 0;
+}
+/* Flatpickr 연결용 숨김 input: 위치는 표시박스 뒤에 겹침 */
+.bp-range-wrap input[type="text"] {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+	cursor: pointer;
+	pointer-events: none; /* JS로 직접 open() 호출 */
+}
+
+/* ══ 공통 입력 폼 포커스 스타일 (Override) ═══════════════ */
+.form-input, .form-select {
+    transition: border-color 0.15s, box-shadow 0.15s !important;
+    border-radius: 8px !important; /* 통일감을 위해 둥글게 조정 */
+    border: 1.5px solid #d0dce8 !important;
+}
+
+.form-input:focus, .form-select:focus {
+    border-color: #1565c0 !important;
+    box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.08) !important;
+    outline: none !important;
+}
+
+/* ══ 달력 전체 ══════════════════════════════════════════ */
+.flatpickr-calendar {
+	font-family: inherit;
+	font-size: 13px;
+	border-radius: 12px;
+	box-shadow: 0 12px 40px rgba(20, 50, 100, 0.20), 0 2px 8px
+		rgba(0, 0, 0, 0.06);
+	border: 1px solid #e0eaf5;
+	overflow: hidden;
+	width: 636px !important; /* 2개월 표시 */
+	padding: 0;
+	background: #fff;
+	/* 중앙 정렬 추가 */
+	left: 50% !important;
+	transform: translateX(-50%) !important;
+	margin-top: 8px;
+}
+
+.flatpickr-calendar.open {
+	z-index: 9999;
+}
+
+/* 시간 전용 피커 너비 조정 */
+.flatpickr-calendar.noCalendar {
+    width: 160px !important;
+}
+
+/* ══ 헤더 (라이트 테마) ══════ */
+.flatpickr-months {
+	background: #f4f7fc;
+	border-bottom: 1px solid #e0eaf5;
+	padding: 8px 0 6px;
+	display: flex;
+	align-items: center;
+}
+
+.flatpickr-months .flatpickr-month {
+	background: transparent;
+	height: 45px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: 1;
+}
+.flatpickr-months .flatpickr-prev-month, .flatpickr-months .flatpickr-next-month
+	{
+	display: flex !important;
+	align-items: center;
+	justify-content: center;
+	padding: 10px 12px 18px !important; /* 하단 패딩 18px로 조정 */
+	z-index: 5;
+	cursor: pointer;
+	color: #5c7a9b;
+	fill: #5c7a9b;
+	height: 45px !important;
+	top: 8px !important;
+	position: absolute !important; /* 레이아웃에서 제외하여 년/월 박스 정렬 보정 */
+}
+
+.flatpickr-months .flatpickr-prev-month { left: 0; }
+.flatpickr-months .flatpickr-next-month { right: 0; }
+
+/* 화살표 호버 시 파란색 계열로 변경 */
+.flatpickr-months .flatpickr-prev-month:hover, .flatpickr-months .flatpickr-next-month:hover,
+	.flatpickr-months .flatpickr-prev-month:hover svg, .flatpickr-months .flatpickr-next-month:hover svg
+	{
+	color: #1565c0 !important;
+	fill: #1565c0 !important;
+}
+
+/* 두 번째 달 왼쪽 구분선 */
+.flatpickr-months .flatpickr-month+.flatpickr-month {
+	border-left: 1px solid #e0eaf5;
+}
+
+/* ══ 월 / 년도 ══════════════════════════ */
+.flatpickr-current-month {
+	padding: 0 !important;
+	display: flex !important;
+	flex-direction: row-reverse !important; /* 년도-월 순서로 변경 */
+	align-items: center !important;
+	justify-content: center !important;
+	gap: 4px !important;
+	font-size: 130% !important;
+	font-weight: 700;
+	color: #1e3a5f;
+	height: 100% !important;
+	position: relative !important;
+	width: auto !important;
+	left: auto !important;
+}
+/* 월 드롭다운 활성화 및 스타일 */
+.flatpickr-current-month .flatpickr-monthDropdown-months {
+	font-size: 15px;
+	font-weight: 700;
+	color: #1e3a5f;
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	padding: 4px 8px;
+	border-radius: 5px;
+	appearance: menulist !important; /* 드롭다운 화살표 표시 */
+	pointer-events: auto !important; /* 클릭 가능하도록 명시 */
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months:hover {
+	background: #e0eaf5;
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months:hover {
+	background: #e0eaf5;
+}
+/* 년도 입력 */
+.flatpickr-current-month .numInputWrapper {
+	width: auto !important;
+	display: inline-flex !important;
+	align-items: center !important;
+}
+
+.flatpickr-current-month input.cur-year {
+	font-size: 15px;
+	font-weight: 700;
+	color: #1e3a5f;
+	width: 54px !important;
+	padding: 3px 4px;
+	border-radius: 5px;
+}
+
+.flatpickr-current-month input.cur-year:hover, .flatpickr-current-month input.cur-year:focus
+	{
+	background: #e0eaf5;
+	outline: none;
+}
+
+.numInputWrapper span.arrowUp:after {
+	border-bottom-color: #5c7a9b;
+}
+
+.numInputWrapper span.arrowDown:after {
+	border-top-color: #5c7a9b;
+}
+
+/* ══ 요일 헤더 ══════════════════════════════════════════ */
+.flatpickr-weekdays {
+	background: #f8fafd;
+}
+
+.flatpickr-weekdaycontainer {
+	border-bottom: 1px solid #eef3fb;
+}
+
+span.flatpickr-weekday {
+	background: transparent;
+	font-size: 11px;
+	font-weight: 700;
+	color: #8a9bab;
+	padding-bottom: 5px !important;
+}
+
+span.flatpickr-weekday:first-child {
+	color: #e05252;
+}
+
+span.flatpickr-weekday:last-child {
+	color: #e05252;
+}
+
+/* ══ 달력 내부 구조 정렬 보정 ══════════════════════════ */
+.flatpickr-innerContainer {
+	display: flex !important;
+	width: 100% !important;
+}
+
+.flatpickr-rContainer {
+	flex: 1 !important;
+	display: flex !important;
+	flex-direction: column !important;
+}
+
+/* ══ 날짜 셀 ══════════════════════════════════════════ */
+.flatpickr-days {
+	border: none;
+	display: flex !important;
+	width: 100% !important;
+}
+
+.dayContainer {
+	padding: 6px 8px 10px;
+	gap: 0 !important;
+	flex: 1 !important;
+	width: 100% !important;
+	max-width: none !important;
+}
+
+.dayContainer+.dayContainer {
+	border-left: 1px solid #e0eaf5;
+}
+
+.flatpickr-day {
+	border-radius: 50%;
+	font-size: 12px;
+	font-weight: 400;
+	height: 38px;
+	line-height: 1;
+	max-width: none !important; /* 가득 채우기 위해 제한 해제 */
+	width: 14.28%; /* 7일 등분 */
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	border: 1.5px solid transparent;
+	color: #2c3e50;
+	margin: 0 !important;
+	transition: background 0.1s;
+}
+
+.flatpickr-day:hover:not(.selected):not(.startRange):not(.endRange):not(.inRange)
+	{
+	background: #e8f1fd;
+	border-color: transparent;
+}
+
+.flatpickr-day.today {
+	border-color: #1565c0 !important;
+	font-weight: 700;
+}
+
+.flatpickr-day.today:not(.selected):not(.startRange):not(.endRange) {
+	color: #1565c0;
+}
+
+/* 범위 하이라이트 */
+.flatpickr-day.inRange {
+	background: #deeafb !important;
+	border-radius: 0 !important;
+	box-shadow: none !important;
+	border-color: transparent !important;
+	color: #1565c0 !important;
+}
+
+.flatpickr-day.startRange, .flatpickr-day.endRange, .flatpickr-day.selected
+	{
+	background: #1565c0 !important;
+	border-color: #1565c0 !important;
+	color: #fff !important;
+	font-weight: 700;
+	border-radius: 50% !important;
+}
+/* 범위 시작·끝 연결 오버레이 */
+.flatpickr-day.startRange {
+	border-radius: 50% 0 0 50% !important;
+}
+
+.flatpickr-day.endRange {
+	border-radius: 0 50% 50% 0 !important;
+}
+
+.flatpickr-day.startRange.endRange {
+	border-radius: 50% !important;
+}
+
+/* 이전·다음달 */
+.flatpickr-day.prevMonthDay, .flatpickr-day.nextMonthDay {
+	color: #c8d6e0;
+}
+
+/* ══ 주말 ══════════════════════════════════════════════ */
+.flatpickr-day.fp-weekend {
+	color: #e05252;
+}
+
+.flatpickr-day.fp-weekend.inRange {
+	color: #e05252 !important;
+}
+
+.flatpickr-day.fp-weekend.selected, .flatpickr-day.fp-weekend.startRange,
+	.flatpickr-day.fp-weekend.endRange {
+	color: #fff !important;
+}
+
+.flatpickr-day.fp-weekend.today:not(.selected) {
+	color: #e05252 !important;
+}
+
+.flatpickr-day.fp-weekend.prevMonthDay, .flatpickr-day.fp-weekend.nextMonthDay
+	{
+	color: #f0baba;
+}
+
+/* ══ 공휴일 ════════════════════════════════════════════ */
+.flatpickr-day.fp-holiday {
+	color: #e05252;
+	font-weight: 700;
+}
+
+.flatpickr-day.fp-holiday.inRange {
+	color: #e05252 !important;
+}
+
+.flatpickr-day.fp-holiday.selected, .flatpickr-day.fp-holiday.startRange,
+	.flatpickr-day.fp-holiday.endRange {
+	color: #fff !important;
+}
+
+.flatpickr-day.fp-holiday.today:not(.selected) {
+	color: #e05252 !important;
+}
+
+.flatpickr-day.fp-holiday.prevMonthDay, .flatpickr-day.fp-holiday.nextMonthDay
+	{
+	color: #f0baba;
+}

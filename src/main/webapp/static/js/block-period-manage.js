@@ -10,7 +10,9 @@
         searchText:   '',
         editingId:    null,
         isAdmin:      false,
-        expanded:     {}
+        expanded:     {},
+        fpStartDate:  '',   // range picker가 선택한 시작일 "YYYY-MM-DD"
+        fpEndDate:    ''    // range picker가 선택한 종료일 "YYYY-MM-DD"
     };
 
     // Flatpickr 한국어 로케일 (CDN 로케일 파일 없이 인라인 정의)
@@ -27,8 +29,52 @@
         ordinal: function () { return '일'; }
     };
 
-    var fpStart = null;
-    var fpEnd   = null;
+    var fpRange = null;
+
+    // ── 대한민국 공휴일 ────────────────────────────────────────────
+    // 고정 공휴일 (매년 동일, MM-DD 키)
+    var FIXED_HOLIDAYS = {
+        '01-01': '신정',
+        '03-01': '삼일절',
+        '05-05': '어린이날',
+        '06-06': '현충일',
+        '08-15': '광복절',
+        '10-03': '개천절',
+        '10-09': '한글날',
+        '12-25': '크리스마스'
+    };
+
+    // 음력 기반 / 연도별 공휴일 (YYYY-MM-DD 키)
+    var VARIABLE_HOLIDAYS = {
+        /* 2024 */
+        '2024-02-09':'설 연휴', '2024-02-10':'설날', '2024-02-11':'설 연휴', '2024-02-12':'대체공휴일',
+        '2024-04-10':'국회의원선거',
+        '2024-05-06':'대체공휴일', '2024-05-15':'부처님오신날',
+        '2024-09-16':'추석 연휴', '2024-09-17':'추석', '2024-09-18':'추석 연휴',
+        /* 2025 */
+        '2025-01-28':'설 연휴', '2025-01-29':'설날', '2025-01-30':'설 연휴',
+        '2025-05-06':'대체공휴일',
+        '2025-10-05':'추석 연휴', '2025-10-06':'추석', '2025-10-07':'추석 연휴', '2025-10-08':'대체공휴일',
+        /* 2026 */
+        '2026-02-16':'설 연휴', '2026-02-17':'설날', '2026-02-18':'설 연휴',
+        '2026-05-24':'부처님오신날',
+        '2026-09-24':'추석 연휴', '2026-09-25':'추석', '2026-09-26':'추석 연휴',
+        /* 2027 */
+        '2027-02-06':'설 연휴', '2027-02-07':'설날', '2027-02-08':'설 연휴', '2027-02-09':'대체공휴일',
+        '2027-05-13':'부처님오신날',
+        '2027-10-04':'추석 연휴', '2027-10-05':'추석', '2027-10-06':'추석 연휴',
+        /* 2028 */
+        '2028-01-26':'설 연휴', '2028-01-27':'설날', '2028-01-28':'설 연휴',
+        '2028-05-02':'부처님오신날',
+        '2028-09-12':'추석 연휴', '2028-09-13':'추석', '2028-09-14':'추석 연휴'
+    };
+
+    function getHolidayName(date) {
+        var y   = date.getFullYear();
+        var mm  = ('0' + (date.getMonth() + 1)).slice(-2);
+        var dd  = ('0' + date.getDate()).slice(-2);
+        return VARIABLE_HOLIDAYS[y + '-' + mm + '-' + dd] || FIXED_HOLIDAYS[mm + '-' + dd] || null;
+    }
 
     /* ══════════════════════════════════════════
        초기화
@@ -60,30 +106,75 @@
     function initFlatpickr() {
         if (typeof flatpickr === 'undefined') return;
 
-        var commonOpts = {
-            locale:        FP_KO,
-            dateFormat:    'Y-m-d',
-            disableMobile: true,
-            allowInput:    false
-        };
+        // 날짜 셀 생성 콜백: 주말 + 공휴일 처리
+        function onDayCreate(dObj, dStr, fp, dayElem) {
+            var date = dayElem.dateObj;
+            if (!date) return;
+            var dow = date.getDay(); // 0=일, 6=토
+            if (dow === 0 || dow === 6) dayElem.classList.add('fp-weekend');
+            if (getHolidayName(date)) dayElem.classList.add('fp-holiday');
+        }
 
-        fpStart = flatpickr('#bpStartDate', Object.assign({}, commonOpts, {
+        // 1. 기간 선택 (날짜)
+        fpRange = flatpickr('#bpDateRange', {
+            locale:            FP_KO,
+            mode:              'range',
+            showMonths:        2,
+            monthSelectorType: 'dropdown',
+            animate:           false,
+            dateFormat:        'Y-m-d',
+            disableMobile:     true,
+            allowInput:        false,
+            minDate:           'today',
+            onDayCreate:       onDayCreate,
             onChange: function (selectedDates) {
-                // 시작일 선택 시 종료일 최소값 연동
-                if (fpEnd && selectedDates[0]) {
-                    fpEnd.set('minDate', selectedDates[0]);
-                }
+                var start = selectedDates[0] || null;
+                var end   = selectedDates[1] || null;
+                state.fpStartDate = start ? fmtDate(start) : '';
+                state.fpEndDate   = end   ? fmtDate(end)   : '';
+                updateRangeDisplay(state.fpStartDate, state.fpEndDate);
             }
-        }));
+        });
 
-        fpEnd = flatpickr('#bpEndDate', Object.assign({}, commonOpts, {
-            onChange: function (selectedDates) {
-                // 종료일 선택 시 시작일 최대값 연동
-                if (fpStart && selectedDates[0]) {
-                    fpStart.set('maxDate', selectedDates[0]);
-                }
-            }
-        }));
+        // 2. 시간 선택 (시작)
+        flatpickr('#bpStartTime', {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "H:i",
+            time_24hr:  true,
+            disableMobile: true
+        });
+
+        // 3. 시간 선택 (종료)
+        flatpickr('#bpEndTime', {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "H:i",
+            time_24hr:  true,
+            disableMobile: true
+        });
+
+        // 표시 박스 클릭 시 달력 오픈
+        var display = document.getElementById('bpRangeDisplay');
+        if (display) display.addEventListener('click', function () {
+            if (fpRange) fpRange.open();
+        });
+    }
+
+    // Date → "YYYY-MM-DD"
+    function fmtDate(date) {
+        var y = date.getFullYear();
+        var m = ('0' + (date.getMonth() + 1)).slice(-2);
+        var d = ('0' + date.getDate()).slice(-2);
+        return y + '-' + m + '-' + d;
+    }
+
+    // 범위 표시 박스 업데이트
+    function updateRangeDisplay(start, end) {
+        var sEl = document.getElementById('bpStartVal');
+        var eEl = document.getElementById('bpEndVal');
+        if (sEl) { sEl.textContent = start || '날짜 선택'; sEl.classList.toggle('empty', !start); }
+        if (eEl) { eEl.textContent = end   || '날짜 선택'; eEl.classList.toggle('empty', !end); }
     }
 
     /* ══════════════════════════════════════════
@@ -391,8 +482,10 @@
         setVal('bpTitle',         '');
         setVal('bpStartTime',     '');
         setVal('bpEndTime',       '');
-        if (fpStart) { fpStart.clear(); fpStart.set('maxDate', null); }
-        if (fpEnd)   { fpEnd.clear();   fpEnd.set('minDate', null);   }
+        state.fpStartDate = '';
+        state.fpEndDate   = '';
+        if (fpRange) fpRange.clear();
+        updateRangeDisplay('', '');
 
         if (period) {
             titleEl.textContent   = '제한 일정 수정';
@@ -403,13 +496,16 @@
             setVal('bpTitle',         period.title || '');
 
             // "yyyy-MM-dd HH:mm:ss" → date / time 분리
-            var parts = splitDatetime(period.startDatetime);
-            if (fpStart) fpStart.setDate(parts.date, false);
-            setVal('bpStartTime', parts.time === '00:00' ? '' : parts.time);
-
+            var sParts = splitDatetime(period.startDatetime);
             var eParts = splitDatetime(period.endDatetime);
-            if (fpEnd) fpEnd.setDate(eParts.date, false);
-            setVal('bpEndTime', eParts.time === '23:59' ? '' : eParts.time);
+
+            state.fpStartDate = sParts.date;
+            state.fpEndDate   = eParts.date;
+            if (fpRange) fpRange.setDate([sParts.date, eParts.date], false);
+            updateRangeDisplay(sParts.date, eParts.date);
+
+            setVal('bpStartTime', sParts.time === '00:00' ? '' : sParts.time);
+            setVal('bpEndTime',   eParts.time === '23:59' ? '' : eParts.time);
         } else {
             titleEl.textContent   = '제한 일정 등록';
             submitBtn.textContent = '등록';
@@ -423,20 +519,26 @@
     function closeModal() {
         var modal = document.getElementById('blockPeriodModal');
         if (modal) modal.style.display = 'none';
-        state.editingId = null;
+        if (fpRange) fpRange.close();
+        state.editingId   = null;
+        state.fpStartDate = '';
+        state.fpEndDate   = '';
     }
 
     function handleSubmit() {
         var title     = (getVal('bpTitle')     || '').trim();
-        var startDate = (getVal('bpStartDate') || '').trim();
+        var startDate = state.fpStartDate;
+        var endDate   = state.fpEndDate;
         var startTime = (getVal('bpStartTime') || '').trim();
-        var endDate   = (getVal('bpEndDate')   || '').trim();
         var endTime   = (getVal('bpEndTime')   || '').trim();
         var isEdit    = !!state.editingId;
 
-        if (!title)     { alert('제목을 입력하세요.');       focusEl('bpTitle');   return; }
-        if (!startDate) { alert('시작 날짜를 선택하세요.'); if (fpStart) fpStart.open(); return; }
-        if (!endDate)   { alert('종료 날짜를 선택하세요.'); if (fpEnd)   fpEnd.open();   return; }
+        if (!title)     { alert('제목을 입력하세요.');                  focusEl('bpTitle'); return; }
+        if (!startDate || !endDate) {
+            alert('제한 기간을 선택하세요.');
+            if (fpRange) fpRange.open();
+            return;
+        }
 
         // 날짜/시간 조합
         var startDatetime = startDate + ' ' + (startTime ? startTime + ':00' : '00:00:00');
