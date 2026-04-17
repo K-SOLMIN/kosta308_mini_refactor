@@ -1,6 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ page import="com.kimdoolim.dto.User, com.kimdoolim.dto.Permission" %>
 <%@ page import="com.kimdoolim.dto.Equipment, com.kimdoolim.dto.EquipmentDetail" %>
+<%@ page import="com.kimdoolim.dto.Facility" %>
 <%@ page import="java.util.List" %>
 <%
     boolean isAdmin = Boolean.TRUE.equals(request.getAttribute("isAdmin"));
@@ -10,6 +11,9 @@
     @SuppressWarnings("unchecked")
     List<User> managers = (List<User>) request.getAttribute("managers");
     if (managers == null) managers = java.util.Collections.emptyList();
+    @SuppressWarnings("unchecked")
+    List<Facility> facilities = (List<Facility>) request.getAttribute("facilities");
+    if (facilities == null) facilities = java.util.Collections.emptyList();
     int colCount = isAdmin ? 9 : 8;
 %>
 
@@ -62,10 +66,26 @@
             for (int i = 0; i < managers.size(); i++) {
                 User m = managers.get(i);
                 String name = m.getName() != null ? m.getName().replace("\"","\\\"") : "";
+                String perm = m.getPermission() != null ? m.getPermission().name() : "USER";
         %>{
             "id":<%= m.getUserId() %>,
-            "name":"<%= name %>"
+            "name":"<%= name %>",
+            "permission":"<%= perm %>"
         }<%= i < managers.size() - 1 ? "," : "" %><%
+            }
+        %>]
+    </script>
+    <script id="emFacilitiesJson" type="application/json">
+        [<%
+            for (int i = 0; i < facilities.size(); i++) {
+                Facility fac = facilities.get(i);
+                String facName = fac.getName()     != null ? fac.getName().replace("\"","\\\"")     : "";
+                String facLoc  = fac.getLocation() != null ? fac.getLocation().replace("\"","\\\"") : "";
+        %>{
+            "id":<%= fac.getFacilityId() %>,
+            "name":"<%= facName %>",
+            "location":"<%= facLoc %>"
+        }<%= i < facilities.size() - 1 ? "," : "" %><%
             }
         %>]
     </script>
@@ -201,8 +221,8 @@
         <div class="modal-body">
             <input type="hidden" id="emEquipmentId">
 
-            <!-- 세트 여부 토글 -->
-            <div class="form-group" style="margin-bottom:16px;">
+            <!-- 비품 유형 (등록 시에만 변경 가능) -->
+            <div class="form-group" style="margin-bottom:16px;" id="emIsSetGroup">
                 <label class="form-label">비품 유형</label>
                 <div class="form-radio-group">
                     <label class="form-radio"><input type="radio" name="emIsSet" value="false" checked> 단품 (개별 1개)</label>
@@ -216,42 +236,51 @@
                     <input type="text" id="emName" class="form-input" placeholder="예: 노트북" maxlength="100">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">보관 위치 <span class="form-required">*</span></label>
-                    <input type="text" id="emLocation" class="form-input" placeholder="예: 본관 3층 보관실" maxlength="100">
+                    <label class="form-label">담당 시설</label>
+                    <select id="emFacilityId" class="form-select">
+                        <option value="">없음 (독립 비품)</option>
+                        <!-- equipment-manage.js가 채움 -->
+                    </select>
                 </div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label" id="emSerialLabel">시리얼 번호</label>
-                    <input type="text" id="emSerialNo" class="form-input" placeholder="예: NB-2024-001" maxlength="100">
+                    <label class="form-label">보관 위치 <span class="form-required">*</span></label>
+                    <input type="text" id="emLocation" class="form-input" placeholder="시설 선택 시 자동 입력" maxlength="100">
                 </div>
-                <!-- 세트 등록 시에만 표시 -->
-                <div class="form-group" id="emQuantityGroup" style="display:none;">
-                    <label class="form-label">낱개 수량 <span class="form-required">*</span></label>
-                    <div class="form-inline">
-                        <input type="number" id="emQuantity" class="form-input" placeholder="예: 5" min="1" max="999">
-                        <span class="form-unit">개</span>
-                    </div>
-                    <div style="font-size:11px;color:#8a9bab;margin-top:4px;">시리얼 접두사-001 ~ 접두사-N 자동 생성</div>
-                </div>
-            </div>
-
-            <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">담당자</label>
                     <select id="emManager" class="form-select">
                         <option value="">담당자 없음</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">담당 시설 ID</label>
-                    <input type="number" id="emFacilityId" class="form-input" placeholder="시설 ID (선택)" min="1">
-                </div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">상태 <span class="form-required">*</span></label>
+            <!-- 시리얼번호 -->
+            <div class="form-group" id="emSerialGroup">
+                <label class="form-label" id="emSerialLabel">시리얼번호</label>
+                <div class="form-radio-group" style="margin-bottom:6px;" id="emSerialModeGroup">
+                    <label class="form-radio"><input type="radio" name="emSerialMode" value="auto" checked> 자동 부여</label>
+                    <label class="form-radio"><input type="radio" name="emSerialMode" value="manual"> 직접 입력</label>
+                </div>
+                <input type="text" id="emSerialNo" class="form-input" placeholder="예: NB-2024-001" maxlength="100" style="display:none;">
+                <div id="emSerialAutoNote" style="font-size:11px;color:#8a9bab;">저장 시 자동으로 시리얼번호가 부여됩니다.</div>
+            </div>
+
+            <!-- 세트 등록 시에만 표시 -->
+            <div class="form-group" id="emQuantityGroup" style="display:none;">
+                <label class="form-label">낱개 수량 <span class="form-required">*</span></label>
+                <div class="form-inline">
+                    <input type="number" id="emQuantity" class="form-input" placeholder="예: 5" min="1" max="999">
+                    <span class="form-unit">개</span>
+                </div>
+                <div style="font-size:11px;color:#8a9bab;margin-top:4px;">시리얼접두사-001 ~ 접두사-N 형식으로 낱개 자동 생성</div>
+            </div>
+
+            <!-- 상태 (수정 시에만 표시) -->
+            <div class="form-group" id="emStatusGroup" style="display:none;">
+                <label class="form-label">상태</label>
                 <div class="form-radio-group">
                     <label class="form-radio"><input type="radio" name="emStatus" value="정상" checked> 정상</label>
                     <label class="form-radio"><input type="radio" name="emStatus" value="수리"> 수리</label>

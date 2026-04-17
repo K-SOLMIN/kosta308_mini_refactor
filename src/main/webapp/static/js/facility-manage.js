@@ -411,6 +411,8 @@
         setVal('fmMaxUnit',    '일');
         setRadio('fmStatus', '정상');
 
+        var statusGroupEl = document.getElementById('fmStatusGroup');
+
         if (facility) {
             // 수정 모드
             titleEl.textContent   = '시설 수정';
@@ -425,11 +427,13 @@
             setVal('fmMaxValue',   facility.maxValue);
             setVal('fmMaxUnit',    facility.maxUnit  || '일');
             setRadio('fmStatus',   facility.status   || '정상');
+            if (statusGroupEl) statusGroupEl.style.display = ''; // 수정 시 상태 표시
         } else {
             // 등록 모드
             titleEl.textContent   = '시설 등록';
             submitBtn.textContent = '등록';
             state.editingId       = null;
+            if (statusGroupEl) statusGroupEl.style.display = 'none'; // 등록 시 상태 숨김
         }
 
         modal.style.display = 'flex';
@@ -449,18 +453,22 @@
         var maxValue = parseInt(getVal('fmMaxValue'), 10);
         var maxUnit  = getVal('fmMaxUnit') || '일';
         var mgrId    = getVal('fmManager') || null;
-        var statusEl = document.querySelector('input[name="fmStatus"]:checked');
+        var isEdit   = !!state.editingId;
+
+        // 상태: 수정 시 선택값, 등록 시 '정상' 고정
+        var status = '정상';
+        if (isEdit) {
+            var statusEl = document.querySelector('input[name="fmStatus"]:checked');
+            if (statusEl) status = statusEl.value;
+        }
 
         if (!name)              { alert('시설명을 입력하세요.'); focusEl('fmName');     return; }
         if (!location)          { alert('위치를 입력하세요.');   focusEl('fmLocation'); return; }
         if (!capacity || capacity < 1) { alert('최대 수용인원을 입력하세요.'); focusEl('fmCapacity'); return; }
         if (!maxValue || maxValue < 1) { alert('최대 예약 기간을 입력하세요.'); focusEl('fmMaxValue'); return; }
-        if (!statusEl)          { alert('상태를 선택하세요.'); return; }
 
         var mgrObj     = mgrId ? state.managers.find(function (m) { return String(m.id) === String(mgrId); }) : null;
         var mgrName    = mgrObj ? mgrObj.name : null;
-        var status     = statusEl.value;
-        var isEdit     = !!state.editingId;
 
         // 로컬 즉시 반영 (데모용)
         if (isEdit) {

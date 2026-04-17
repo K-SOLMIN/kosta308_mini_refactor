@@ -2,9 +2,11 @@ package com.kimdoolim.equipment.controller;
 
 import com.kimdoolim.dto.Equipment;
 import com.kimdoolim.dto.EquipmentDetail;
+import com.kimdoolim.dto.Facility;
 import com.kimdoolim.dto.Permission;
 import com.kimdoolim.dto.User;
 import com.kimdoolim.equipment.service.EquipmentService;
+import com.kimdoolim.facility.service.FacilityService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -19,6 +21,7 @@ import java.util.List;
 public class EquipmentServlet extends HttpServlet {
 
     private final EquipmentService equipmentService = EquipmentService.getInstance();
+    private final FacilityService  facilityService  = FacilityService.getInstance();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
@@ -57,7 +60,8 @@ public class EquipmentServlet extends HttpServlet {
         }
 
         List<Equipment> equipments = equipmentService.getAllEquipments();
-        List<User>      managers   = equipmentService.getAvailableManagers();
+        List<User>      managers   = equipmentService.getAllUsers();
+        List<Facility>  facilities = facilityService.getAllFacilities();
 
         Permission perm = loginUser.getPermission();
         if (perm == Permission.MIDDLEADMIN) {
@@ -76,6 +80,7 @@ public class EquipmentServlet extends HttpServlet {
         req.setAttribute("userPermission", perm.name().trim());
         req.setAttribute("equipments",     equipments);
         req.setAttribute("managers",       managers);
+        req.setAttribute("facilities",     facilities);
         req.getRequestDispatcher("/WEB-INF/views/fragments/equipmentmanageviewresponse.jsp")
            .forward(req, resp);
     }
@@ -97,7 +102,7 @@ public class EquipmentServlet extends HttpServlet {
 
         switch (action == null ? "" : action) {
             case "save": {
-                Equipment eq = buildEquipment(req, false);
+                Equipment eq = buildEquipment(req, false, "정상"); // 등록 시 상태 강제
                 if (eq.isSet()) {
                     int qty = parseInt(req.getParameter("quantity"), 1);
                     ok = equipmentService.registerEquipmentSet(eq, qty);
@@ -107,7 +112,7 @@ public class EquipmentServlet extends HttpServlet {
                 break;
             }
             case "update":
-                ok = equipmentService.modifyEquipment(buildEquipment(req, true));
+                ok = equipmentService.modifyEquipment(buildEquipment(req, true, null));
                 break;
             case "delete":
                 ok = equipmentService.removeEquipment(Long.parseLong(req.getParameter("equipmentId")));
@@ -142,12 +147,14 @@ public class EquipmentServlet extends HttpServlet {
     }
 
     // ── 파라미터 → Equipment 빌드 ────────────────────────────────────
-    private Equipment buildEquipment(HttpServletRequest req, boolean withId) {
-        Equipment.Builder b = Equipment.builder()
+    private Equipment buildEquipment(HttpServletRequest req, boolean withId, String statusOverride) {
+        String status = statusOverride != null ? statusOverride : req.getParameter("status");
+
+        Equipment.EquipmentBuilder b = Equipment.builder()
             .name(req.getParameter("name"))
             .location(req.getParameter("location"))
             .serialNo(req.getParameter("serialNo"))
-            .status(req.getParameter("status"));
+            .status(status);
 
         String facId = req.getParameter("facilityId");
         if (facId != null && !facId.isBlank()) b.facilityId(Long.parseLong(facId));

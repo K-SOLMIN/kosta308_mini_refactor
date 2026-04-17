@@ -223,8 +223,9 @@
                         </select>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">상태 <span class="form-required">*</span></label>
+                <!-- 상태: 수정 시에만 표시 -->
+                <div class="form-group" id="fmStatusGroup" style="display:none;">
+                    <label class="form-label">상태</label>
                     <div class="form-radio-group">
                         <label class="form-radio"><input type="radio" name="fmStatus" value="정상" checked> 정상</label>
                         <label class="form-radio"><input type="radio" name="fmStatus" value="수리"> 수리</label>

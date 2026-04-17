@@ -31,10 +31,11 @@ public class FacilityService {
         }
     }
 
-    public List<User> getAvailableManagers() {
+    // ── 전체 활성 사용자 조회 (담당자 배정용) ───────────────────────
+    public List<User> getAllUsers() {
         Connection conn = getConnection();
         try {
-            List<User> list = loginDao.findMiddleAdmins(conn);
+            List<User> list = loginDao.findAllActiveUsers(conn);
             return list != null ? list : Collections.emptyList();
         } finally {
             close(conn);
@@ -45,12 +46,14 @@ public class FacilityService {
         Connection conn = getConnection();
         try {
             int result = facilityDao.save(conn, facility);
-            if (result > 0) {
-                commit(conn);
-                return true;
+            if (result <= 0) { rollback(conn); return false; }
+
+            // 담당자 권한 승격 (USER → MIDDLEADMIN)
+            if (facility.getManagerId() != null) {
+                loginDao.updatePermissionToMiddleAdmin(conn, facility.getManagerId());
             }
-            rollback(conn);
-            return false;
+            commit(conn);
+            return true;
         } catch (Exception e) {
             rollback(conn);
             throw e;
@@ -66,7 +69,6 @@ public class FacilityService {
             Facility existing = facilityDao.findById(conn, facility.getFacilityId());
             if (existing == null) return false;
 
-            // 관리자가 아니면서, 본인이 담당하는 시설이 아닌 경우 거부
             if (loginUser.getPermission() != Permission.ADMIN) {
                 if (existing.getManagerId() == null || !existing.getManagerId().equals(loginUser.getUserId())) {
                     return false;
@@ -75,12 +77,14 @@ public class FacilityService {
             // ────────────────────────────────────────────────────────────
 
             int result = facilityDao.update(conn, facility);
-            if (result > 0) {
-                commit(conn);
-                return true;
+            if (result <= 0) { rollback(conn); return false; }
+
+            // 담당자 권한 승격
+            if (facility.getManagerId() != null) {
+                loginDao.updatePermissionToMiddleAdmin(conn, facility.getManagerId());
             }
-            rollback(conn);
-            return false;
+            commit(conn);
+            return true;
         } catch (Exception e) {
             rollback(conn);
             throw e;

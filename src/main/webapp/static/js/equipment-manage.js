@@ -7,6 +7,7 @@
     var state = {
         equipments:     [],
         managers:       [],
+        facilities:     [],
         filterStatus:   'all',
         searchText:     '',
         editingId:      null,
@@ -26,17 +27,20 @@
         state.userPermission = (bridge.dataset.userPermission || 'USER').trim();
 
         try {
-            state.equipments = JSON.parse(document.getElementById('emEquipmentsJson').textContent || '[]');
-            state.managers   = JSON.parse(document.getElementById('emManagersJson').textContent   || '[]');
+            state.equipments = JSON.parse(document.getElementById('emEquipmentsJson').textContent  || '[]');
+            state.managers   = JSON.parse(document.getElementById('emManagersJson').textContent    || '[]');
+            state.facilities = JSON.parse(document.getElementById('emFacilitiesJson').textContent  || '[]');
         } catch (e) {
             console.error('[EquipmentManage] JSON parse error:', e);
             state.equipments = [];
             state.managers   = [];
+            state.facilities = [];
         }
 
         renderStats();
         renderTable();
         populateManagerSelect();
+        populateFacilitySelect();
         setupListeners();
     }
 
@@ -381,7 +385,23 @@
         state.managers.forEach(function (m) {
             var opt = document.createElement('option');
             opt.value       = m.id;
-            opt.textContent = m.name;
+            opt.textContent = m.name + (m.permission === 'USER' ? ' (일반)' : '');
+            sel.appendChild(opt);
+        });
+    }
+
+    /* ══════════════════════════════════════════
+       시설 Select 채우기
+    ══════════════════════════════════════════ */
+    function populateFacilitySelect() {
+        var sel = document.getElementById('emFacilityId');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">없음 (독립 비품)</option>';
+        state.facilities.forEach(function (f) {
+            var opt = document.createElement('option');
+            opt.value       = f.id;
+            opt.textContent = f.name + ' (' + f.location + ')';
+            opt.dataset.location = f.location;
             sel.appendChild(opt);
         });
     }
@@ -422,6 +442,23 @@
         document.querySelectorAll('input[name="emIsSet"]').forEach(function (r) {
             r.addEventListener('change', toggleSetFields);
         });
+
+        // 시리얼 모드 토글 (자동/직접)
+        document.querySelectorAll('input[name="emSerialMode"]').forEach(function (r) {
+            r.addEventListener('change', toggleSerialMode);
+        });
+
+        // 시설 선택 → 위치 자동 채우기
+        var facilitySelEl = document.getElementById('emFacilityId');
+        if (facilitySelEl) {
+            facilitySelEl.addEventListener('change', function () {
+                var selected = this.options[this.selectedIndex];
+                var locEl = document.getElementById('emLocation');
+                if (selected && selected.dataset.location && locEl && !locEl.value) {
+                    locEl.value = selected.dataset.location;
+                }
+            });
+        }
 
         // ── 테이블 tbody 통합 이벤트 ──────────────────────────────────
         var tbody = document.getElementById('emTableBody');
@@ -548,6 +585,7 @@
         var submitBtn = document.getElementById('emModalSubmit');
         if (!modal) return;
 
+        // 초기화
         setVal('emEquipmentId', '');
         setVal('emName',        '');
         setVal('emLocation',    '');
@@ -555,28 +593,50 @@
         setVal('emManager',     '');
         setVal('emFacilityId',  '');
         setVal('emQuantity',    '');
-        setRadio('emIsSet',   'false');
-        setRadio('emStatus',  '정상');
+        setRadio('emIsSet',      'false');
+        setRadio('emStatus',     '정상');
+        setRadio('emSerialMode', 'auto');
         toggleSetFields();
+        toggleSerialMode();
+
+        var isSetGroupEl  = document.getElementById('emIsSetGroup');
+        var statusGroupEl = document.getElementById('emStatusGroup');
+        var serialModeEl  = document.getElementById('emSerialModeGroup');
 
         if (equipment) {
+            // ── 수정 모드 ──────────────────────────────────────────
             titleEl.textContent   = '비품 수정';
             submitBtn.textContent = '수정';
             state.editingId       = equipment.id;
 
             setVal('emEquipmentId', equipment.id);
-            setVal('emName',        equipment.name     || '');
-            setVal('emLocation',    equipment.location || '');
-            setVal('emSerialNo',    equipment.serialNo || '');
+            setVal('emName',        equipment.name       || '');
+            setVal('emLocation',    equipment.location   || '');
+            setVal('emSerialNo',    equipment.serialNo   || '');
             setVal('emManager',     equipment.managerId  || '');
             setVal('emFacilityId',  equipment.facilityId || '');
             setRadio('emIsSet',  equipment.isSet ? 'true' : 'false');
             setRadio('emStatus', equipment.status || '정상');
+
+            // 수정: 유형 변경 불가, 상태 표시, 시리얼 직접 입력 모드로 고정
+            if (isSetGroupEl)  isSetGroupEl.style.display  = 'none';
+            if (statusGroupEl) statusGroupEl.style.display = '';
+            if (serialModeEl)  serialModeEl.style.display  = 'none';
+            var serialEl = document.getElementById('emSerialNo');
+            if (serialEl) serialEl.style.display = '';
+            var noteEl = document.getElementById('emSerialAutoNote');
+            if (noteEl) noteEl.style.display = 'none';
+
             toggleSetFields();
         } else {
+            // ── 등록 모드 ──────────────────────────────────────────
             titleEl.textContent   = '비품 등록';
             submitBtn.textContent = '등록';
             state.editingId       = null;
+
+            if (isSetGroupEl)  isSetGroupEl.style.display  = '';
+            if (statusGroupEl) statusGroupEl.style.display = 'none'; // 등록 시 상태 숨김 (항상 정상)
+            if (serialModeEl)  serialModeEl.style.display  = '';
         }
 
         modal.style.display = 'flex';
@@ -595,36 +655,54 @@
         var qtyGroup  = document.getElementById('emQuantityGroup');
         var serialLbl = document.getElementById('emSerialLabel');
         if (qtyGroup)  qtyGroup.style.display = isSet ? '' : 'none';
-        if (serialLbl) serialLbl.textContent   = isSet ? '시리얼 접두사' : '시리얼 번호';
+        if (serialLbl) serialLbl.textContent   = isSet ? '시리얼 접두사' : '시리얼번호';
+    }
+
+    function toggleSerialMode() {
+        var isManual  = getRadio('emSerialMode') === 'manual';
+        var serialEl  = document.getElementById('emSerialNo');
+        var noteEl    = document.getElementById('emSerialAutoNote');
+        if (serialEl) serialEl.style.display = isManual ? '' : 'none';
+        if (noteEl)   noteEl.style.display   = isManual ? 'none' : '';
+        if (!isManual && serialEl) serialEl.value = '';
     }
 
     function handleSubmit() {
         var name       = (getVal('emName')     || '').trim();
         var location   = (getVal('emLocation') || '').trim();
-        var serialNo   = (getVal('emSerialNo') || '').trim();
         var mgrId      = getVal('emManager')    || null;
         var facilityId = getVal('emFacilityId') || null;
         var isSet      = getRadio('emIsSet') === 'true';
         var quantity   = parseInt(getVal('emQuantity'), 10);
-        var statusEl   = document.querySelector('input[name="emStatus"]:checked');
+        var isEdit     = !!state.editingId;
+
+        // 시리얼: 자동이면 빈 값으로 전송 (서버에서 자동 부여)
+        var serialMode = getRadio('emSerialMode') || 'manual'; // 수정 모드는 항상 manual
+        var serialNo   = (serialMode === 'manual') ? (getVal('emSerialNo') || '').trim() : '';
+
+        // 상태: 수정 시에는 선택값, 등록 시에는 '정상' 고정
+        var status = '정상';
+        if (isEdit) {
+            var statusEl = document.querySelector('input[name="emStatus"]:checked');
+            if (statusEl) status = statusEl.value;
+        }
 
         if (!name)                               { alert('비품명을 입력하세요.');    focusEl('emName');     return; }
         if (!location)                           { alert('보관 위치를 입력하세요.'); focusEl('emLocation'); return; }
         if (isSet && (!quantity || quantity < 1)){ alert('낱개 수량을 입력하세요.'); focusEl('emQuantity'); return; }
-        if (!statusEl)                           { alert('상태를 선택하세요.');      return; }
 
         var mgrObj  = mgrId ? state.managers.find(function (m) { return String(m.id) === String(mgrId); }) : null;
         var mgrName = mgrObj ? mgrObj.name : null;
-        var status  = statusEl.value;
-        var isEdit  = !!state.editingId;
+        var facObj  = facilityId ? state.facilities.find(function (f) { return String(f.id) === String(facilityId); }) : null;
+        var facName = facObj ? facObj.name : null;
 
         if (isEdit) {
             var idx = state.equipments.findIndex(function (e) { return e.id === state.editingId; });
             if (idx !== -1) {
                 state.equipments[idx] = Object.assign({}, state.equipments[idx], {
-                    name: name, location: location, serialNo: serialNo,
+                    name: name, location: location, serialNo: serialNo || state.equipments[idx].serialNo,
                     managerId: mgrId ? parseInt(mgrId, 10) : null, managerName: mgrName,
-                    facilityId: facilityId ? parseInt(facilityId, 10) : null,
+                    facilityId: facilityId ? parseInt(facilityId, 10) : null, facilityName: facName,
                     status: status
                 });
             }
@@ -632,13 +710,13 @@
             var newId = state.equipments.length > 0
                 ? Math.max.apply(null, state.equipments.map(function (e) { return e.id; })) + 1 : 1000;
             state.equipments.push({
-                id: newId, name: name, location: location, serialNo: serialNo,
+                id: newId, name: name, location: location, serialNo: serialNo || ('EQ-' + newId),
                 managerId: mgrId ? parseInt(mgrId, 10) : null, managerName: mgrName,
-                facilityId: facilityId ? parseInt(facilityId, 10) : null, facilityName: null,
+                facilityId: facilityId ? parseInt(facilityId, 10) : null, facilityName: facName,
                 isSet: isSet, status: status,
                 detailCount: isSet ? quantity : 0,
                 normalCount: isSet ? quantity : 0,
-                issueCount: 0
+                issueCount: 0, details: []
             });
         }
         closeModal();

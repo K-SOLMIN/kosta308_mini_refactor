@@ -110,6 +110,42 @@ public class EquipmentDao {
         }
     }
 
+    // ── 단건 조회 (권한 검증용: equipmentId + managerId만) ───────────
+    public Equipment findById(Connection conn, long equipmentId) {
+        String sql =
+            "SELECT equipment_id, manager_id FROM EQUIPMENT " +
+            "WHERE equipment_id = ? AND check_delete = 0";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, equipmentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    int mgrIdRaw = rs.getInt("manager_id");
+                    boolean mgrNull = rs.wasNull();
+                    return Equipment.builder()
+                        .equipmentId(rs.getLong("equipment_id"))
+                        .managerId(mgrNull ? null : mgrIdRaw)
+                        .build();
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    // ── 시리얼번호 업데이트 (자동 부여용) ───────────────────────────
+    public int updateSerialNo(Connection conn, long equipmentId, String serialNo) {
+        String sql = "UPDATE EQUIPMENT SET serial_no = ? WHERE equipment_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, serialNo);
+            ps.setLong(2, equipmentId);
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return -1;
+        }
+    }
+
     // ── 소프트 삭제 ──────────────────────────────────────────────────
     public int softDelete(Connection conn, long equipmentId) {
         String sql = "UPDATE EQUIPMENT SET check_delete = 1, deletedate = NOW() WHERE equipment_id = ?";

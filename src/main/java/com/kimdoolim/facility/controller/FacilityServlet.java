@@ -55,7 +55,7 @@ public class FacilityServlet extends HttpServlet {
 
         // ── 데이터 조회 ──
         List<Facility> facilities = facilityService.getAllFacilities();
-        List<User> managers       = facilityService.getAvailableManagers();
+        List<User>     managers   = facilityService.getAllUsers();
 
         // ── 중간 관리자 필터링 및 접근 제한 ──────────────────────────────
         Permission perm = loginUser.getPermission();
@@ -111,10 +111,10 @@ public class FacilityServlet extends HttpServlet {
 
         switch (action == null ? "" : action) {
             case "save":
-                ok = facilityService.registerFacility(buildFacility(req, false));
+                ok = facilityService.registerFacility(buildFacility(req, false, "정상")); // 등록 시 상태 강제
                 break;
             case "update":
-                ok = facilityService.modifyFacility(buildFacility(req, true), loginUser);
+                ok = facilityService.modifyFacility(buildFacility(req, true, null), loginUser);
                 break;
             case "delete":
                 long facilityId = Long.parseLong(req.getParameter("facilityId"));
@@ -129,14 +129,15 @@ public class FacilityServlet extends HttpServlet {
     }
 
     // ── 요청 파라미터 → Facility 빌드 ──────────────────────────────
-    private Facility buildFacility(HttpServletRequest req, boolean withId) {
+    private Facility buildFacility(HttpServletRequest req, boolean withId, String statusOverride) {
+        String status = statusOverride != null ? statusOverride : req.getParameter("status");
         Facility.Builder b = Facility.builder()
             .name(req.getParameter("name"))
             .location(req.getParameter("location"))
             .maxCapacity(Integer.parseInt(req.getParameter("maxCapacity")))
             .maxReservationUnit(req.getParameter("maxReservationUnit"))
             .maxReservationValue(Integer.parseInt(req.getParameter("maxReservationValue")))
-            .status(req.getParameter("status"));
+            .status(status);
 
         String mgrId = req.getParameter("managerId");
         if (mgrId != null && !mgrId.isBlank()) {
