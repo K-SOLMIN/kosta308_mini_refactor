@@ -64,34 +64,71 @@
 	pointer-events: none; /* JS로 직접 open() 호출 */
 }
 
-/* ══ 테이블 내 정렬 보정 ══════════════════════════════ */
-.td-name {
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px;
-    vertical-align: middle !important;
+/* ══ 제한일정 테이블: tbody tr/td 가로 배치 강제 ════════════
+   display:table-row / table-cell !important 로 세로 쌓임 방지
+   ═══════════════════════════════════════════════════════ */
+#bpTableBody tr {
+    display: table-row !important;
 }
 
+#bpTableBody td {
+    display: table-cell !important;
+    vertical-align: middle;
+    padding: 10px 14px;
+}
+
+#bpTableBody .col-idx {
+    text-align: center;
+}
+
+#bpTableBody .fm-manage-cell {
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* td-name: 아이콘·제목·배지 한 줄 가로 배치 */
+#bpTableBody .td-name {
+    white-space: nowrap;
+}
+
+#bpTableBody .td-name > *,
+.bp-title-text {
+    vertical-align: middle;
+}
+
+.bp-title-text {
+    margin: 0 4px;
+}
+
+/* 확장 아이콘 (flex item 안에서 크기만 지정) */
 .em-expand-icon {
-    display: inline-flex !important;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    flex-shrink: 0;
+    width: 18px;
     font-size: 10px;
     color: #8a9bab;
     cursor: pointer;
-    margin-top: -1px; /* 미세 조정 */
+    user-select: none;
 }
 
+/* status-badge 원래 스타일 유지 (equipment manage 등 전역 영향) */
 .status-badge {
     display: inline-flex !important;
     align-items: center !important;
+    vertical-align: middle !important;
     padding: 2px 8px !important;
     font-size: 11px !important;
     height: 18px !important;
     line-height: 1 !important;
     margin-left: 4px;
+}
+
+/* inspection(예정) 배지 색상 - main.css에 없음 */
+.status-badge.inspection {
+    background-color: #e8eefb;
+    color: #1565c0;
 }
 
 /* ══ 공통 입력 폼 포커스 스타일 (Override) ═══════════════ */

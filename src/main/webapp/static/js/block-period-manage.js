@@ -229,7 +229,7 @@
         tbody.innerHTML = filtered.map(function (p, i) {
             var st       = getPeriodStatus(p);
             var stBadge  = statusBadge(st);
-            var nameCell = '<span class="em-expand-icon" data-id="' + p.id + '">▶</span> ' + esc(p.title);
+            var nameCell = '<span class="em-expand-icon" data-id="' + p.id + '">▶</span><span class="bp-title-text">' + esc(p.title) + '</span>';
             var manage   = '';
             if (state.isAdmin) {
                 manage = '<td class="fm-manage-cell">' +
